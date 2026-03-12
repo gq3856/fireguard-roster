@@ -469,6 +469,56 @@
             }
         };
 
+        // --- PDF NATIVE TEXT EXTRACTION (instant, 100% accurate when available) ---
+        const extractPdfTextLayer = async (page) => {
+            try {
+                const textContent = await page.getTextContent();
+                const text = textContent.items.map(item => item.str).join(' ');
+                // Only trust if there's meaningful content (not just whitespace/headers)
+                if (text.replace(/\s+/g, '').length > 20) return text;
+                return null;
+            } catch (e) {
+                return null;
+            }
+        };
+
+        // --- MULTI-PASS OCR: Run multiple filter presets, pick best confidence ---
+        const OCR_PRESETS = [
+            { name: 'standard',  filter: 'grayscale(100%) contrast(150%) brightness(110%)' },
+            { name: 'high-contrast', filter: 'grayscale(100%) contrast(200%) brightness(120%)' },
+            { name: 'dark-boost', filter: 'grayscale(100%) contrast(180%) brightness(140%)' },
+            { name: 'sharp', filter: 'grayscale(100%) contrast(170%) brightness(100%) saturate(0)' },
+        ];
+
+        const multiPassOCR = async (sourceCanvas, worker) => {
+            let bestResult = { text: '', confidence: 0 };
+
+            for (const preset of OCR_PRESETS) {
+                const ocrCanvas = document.createElement('canvas');
+                ocrCanvas.width = sourceCanvas.width;
+                ocrCanvas.height = sourceCanvas.height;
+                const ocrCtx = ocrCanvas.getContext('2d');
+                ocrCtx.filter = preset.filter;
+                ocrCtx.drawImage(sourceCanvas, 0, 0);
+                const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.85);
+
+                const { data } = await worker.recognize(ocrImg);
+                const confidence = Math.round(data.confidence);
+
+                // Keep the result with highest confidence
+                if (confidence > bestResult.confidence) {
+                    bestResult = { text: data.text, confidence };
+                }
+
+                ocrCanvas.width = 0; ocrCanvas.height = 0;
+
+                // If we hit 85%+ confidence, no need to try more passes
+                if (confidence >= 85) break;
+            }
+
+            return bestResult;
+        };
+
         const processPDF = async (file, worker) => {
             try {
                 const arrayBuffer = await readFileAsArrayBuffer(file);
@@ -489,17 +539,21 @@
 
                     const displayImg = canvas.toDataURL('image/jpeg', 0.7);
 
-                    const ocrCanvas = document.createElement('canvas');
-                    ocrCanvas.width = canvas.width;
-                    ocrCanvas.height = canvas.height;
-                    const ocrCtx = ocrCanvas.getContext('2d');
-                    ocrCtx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
-                    ocrCtx.drawImage(canvas, 0, 0);
-                    const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.8);
+                    // STRATEGY 1: Try native PDF text layer first (instant + perfect)
+                    let extractedText = await extractPdfTextLayer(page);
+                    let confidence = 100;
 
-                    // [#5] Get OCR result with confidence
-                    const ocrResult = await runOCR(ocrImg, worker);
-                    const foundGuards = parseText(ocrResult.text);
+                    // STRATEGY 2: If no embedded text, run multi-pass OCR
+                    if (!extractedText) {
+                        setProgress(`OCR Scanning Page ${i} of ${pdf.numPages}...`);
+                        const ocrResult = await multiPassOCR(canvas, worker);
+                        extractedText = ocrResult.text;
+                        confidence = ocrResult.confidence;
+                    } else {
+                        setProgress(`Text extracted from Page ${i} (native)...`);
+                    }
+
+                    const foundGuards = parseText(extractedText);
 
                     foundGuards.forEach(info => {
                         if (info.name !== "UNKNOWN" || info.type !== "N/A" || info.cert !== "N/A") {
@@ -507,13 +561,12 @@
                                  ...info,
                                  id: Date.now() + Math.random(),
                                  originalImage: displayImg,
-                                 confidence: ocrResult.confidence
+                                 confidence
                              });
                         }
                     });
 
                     canvas.width = 0; canvas.height = 0;
-                    ocrCanvas.width = 0; ocrCanvas.height = 0;
                 }
                 return results;
             } catch (error) {
@@ -536,16 +589,8 @@
 
                         const displayImg = canvas.toDataURL('image/jpeg', 0.7);
 
-                        const ocrCanvas = document.createElement('canvas');
-                        ocrCanvas.width = canvas.width;
-                        ocrCanvas.height = canvas.height;
-                        const ocrCtx = ocrCanvas.getContext('2d');
-                        ocrCtx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
-                        ocrCtx.drawImage(img, 0, 0);
-                        const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.8);
-
-                        // [#5] Get OCR result with confidence
-                        const ocrResult = await runOCR(ocrImg, worker);
+                        // Multi-pass OCR for best accuracy
+                        const ocrResult = await multiPassOCR(canvas, worker);
                         const foundGuards = parseText(ocrResult.text);
 
                         let results = foundGuards.map(info => ({
@@ -568,8 +613,6 @@
                         }
 
                         canvas.width = 0; canvas.height = 0;
-                        ocrCanvas.width = 0; ocrCanvas.height = 0;
-
                         resolve(results);
                     };
                     img.src = e.target.result;
@@ -579,71 +622,161 @@
             });
         };
 
-        // [#5] Return both text and confidence from OCR
-        const runOCR = async (imageSrc, worker) => {
-            const { data } = await worker.recognize(imageSrc);
-            return { text: data.text, confidence: Math.round(data.confidence) };
-        };
-
-        // --- PARSER ---
+        // --- ENHANCED PARSER: Multiple regex strategies per field ---
         const parseText = (text) => {
             const results = [];
             const cleanText = text.replace(/[\r\n]+/g, '\n');
 
-            let chunks = cleanText.split(/(?:CERTIFICATE\s+ISSUED\s+BY\s+FDNY|FIRE\s+DEPARTMENT\s+OF\s+NEW\s+YORK)/i);
+            // Split by known FDNY cert headers to handle multiple certs per page
+            let chunks = cleanText.split(/(?:CERTIFICATE\s+ISSUED\s+BY\s+FDNY|FIRE\s+DEPARTMENT\s+(?:OF\s+)?(?:THE\s+)?(?:CITY\s+OF\s+)?NEW\s+YORK)/i);
 
             if (chunks.length > 1 && chunks[0].trim().length < 10) {
                 chunks.shift();
             }
             if (chunks.length === 0) chunks = [cleanText];
 
+            const convertToISO = (d) => {
+                const parts = d.split('/');
+                if (parts.length === 3) {
+                    const [m, day, y] = parts;
+                    const month = m.padStart(2, '0');
+                    const dd = day.padStart(2, '0');
+                    const year = y.length === 2 ? '20' + y : y;
+                    return `${year}-${month}-${dd}`;
+                }
+                return d;
+            };
+
+            // Clean up OCR artifacts from a name string
+            const cleanName = (raw) => {
+                return raw
+                    .replace(/[^A-Za-z\s\.\-']/g, '') // Strip digits, special chars
+                    .replace(/\s{2,}/g, ' ')           // Collapse multiple spaces
+                    .trim()
+                    .split('\n')[0]                    // Only first line
+                    .trim();
+            };
+
             chunks.forEach(chunk => {
                 let data = { name: "UNKNOWN", type: "N/A", cert: "N/A", exp: "N/A" };
                 let hasData = false;
 
-                // NAME
-                let nameMatch = chunk.match(/NAME\s*[:\-\.]?\s*([A-Z\s\.]+)/i);
-                if (!nameMatch) {
-                    const issuedMatch = chunk.match(/ISSUED.*?\n([A-Z\s\.]+)/i);
-                    if (issuedMatch && issuedMatch[1].length > 5) {
-                        data.name = issuedMatch[1].trim();
+                // ============ NAME EXTRACTION (multiple strategies) ============
+                const nameStrategies = [
+                    // Strategy 1: "NAME" keyword followed by text
+                    () => {
+                        const m = chunk.match(/NAME\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
+                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
+                        return null;
+                    },
+                    // Strategy 2: "NAME" on its own line, name on next line
+                    () => {
+                        const m = chunk.match(/NAME\s*\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
+                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
+                        return null;
+                    },
+                    // Strategy 3: After ISSUED line
+                    () => {
+                        const m = chunk.match(/ISSUED.*?\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
+                        if (m && m[1].trim().length >= 5) return cleanName(m[1]);
+                        return null;
+                    },
+                    // Strategy 4: "NANE" or "MAME" (common OCR misreads of NAME)
+                    () => {
+                        const m = chunk.match(/(?:NANE|MAME|NAМЕ)\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
+                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
+                        return null;
+                    },
+                ];
+                for (const strategy of nameStrategies) {
+                    const name = strategy();
+                    if (name && name.length >= 3) {
+                        data.name = name;
                         hasData = true;
-                    }
-                } else {
-                    data.name = nameMatch[1].trim().split('\n')[0];
-                    hasData = true;
-                }
-
-                // [#7] CERT - relaxed to 7-8 digits
-                const certMatch = chunk.match(/(?:CERT|NO)[\.\s]*#?[\s]*(\d{7,8})/i);
-                if (certMatch) {
-                    data.cert = certMatch[1];
-                    hasData = true;
-                }
-
-                // DATE
-                const convertToISO = (d) => {
-                    const parts = d.split('/');
-                    if(parts.length === 3) return `${parts[2]}-${parts[0]}-${parts[1]}`;
-                    return d;
-                };
-                const expMatch = chunk.match(/EXPIRES\s+(\d{2}\/\d{2}\/\d{4})/i);
-                if (expMatch) {
-                    data.exp = convertToISO(expMatch[1]);
-                    hasData = true;
-                } else {
-                    const dateMatch = chunk.match(/(\d{2}\/\d{2}\/\d{4})/);
-                    if (dateMatch) {
-                        data.exp = convertToISO(dateMatch[1]);
-                        hasData = true;
+                        break;
                     }
                 }
 
-                // TYPE
-                const typeMatch = chunk.match(/([Ff])[\s\-]?0?([1234])/);
-                if (typeMatch) {
-                    data.type = `F-0${typeMatch[2]}`;
-                    hasData = true;
+                // ============ CERT # EXTRACTION (multiple strategies) ============
+                const certStrategies = [
+                    // Strategy 1: "CERT.#" or "CERT #" followed by digits
+                    () => { const m = chunk.match(/CERT[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
+                    // Strategy 2: "NO." or "NO #" followed by digits
+                    () => { const m = chunk.match(/NO[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
+                    // Strategy 3: "CERTIFICATE" near a number block
+                    () => { const m = chunk.match(/CERTIFICATE[\s\S]{0,30}?(\d{7,8})/i); return m ? m[1] : null; },
+                    // Strategy 4: "GERT" or "CERI" (OCR misreads of CERT)
+                    () => { const m = chunk.match(/(?:GERT|CERI|CERTI?)[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
+                    // Strategy 5: Standalone 8-digit number (likely cert if other fields found)
+                    () => { const m = chunk.match(/\b(\d{8})\b/); return m ? m[1] : null; },
+                ];
+                for (const strategy of certStrategies) {
+                    const cert = strategy();
+                    if (cert) {
+                        data.cert = cert;
+                        hasData = true;
+                        break;
+                    }
+                }
+
+                // ============ EXPIRATION DATE EXTRACTION (multiple strategies) ============
+                const dateStrategies = [
+                    // Strategy 1: "EXPIRES" keyword
+                    () => { const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i); return m ? m[1] : null; },
+                    // Strategy 2: "EXP" abbreviation
+                    () => { const m = chunk.match(/EXP[\.\s]*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i); return m ? m[1] : null; },
+                    // Strategy 3: Date after ISSUED date (second date = expiration)
+                    () => {
+                        const dates = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g);
+                        // If two dates found, second is typically expiration
+                        if (dates && dates.length >= 2) return dates[1];
+                        return null;
+                    },
+                    // Strategy 4: Any date as last resort
+                    () => { const m = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/); return m ? m[1] : null; },
+                    // Strategy 5: Dates with dashes (MM-DD-YYYY)
+                    () => {
+                        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2})-(\d{1,2})-(\d{2,4})/i);
+                        if (m) return `${m[1]}/${m[2]}/${m[3]}`;
+                        return null;
+                    },
+                ];
+                for (const strategy of dateStrategies) {
+                    const dateStr = strategy();
+                    if (dateStr) {
+                        data.exp = convertToISO(dateStr);
+                        hasData = true;
+                        break;
+                    }
+                }
+
+                // ============ TYPE EXTRACTION (multiple strategies) ============
+                const typeStrategies = [
+                    // Strategy 1: "CAT." or "CAT" followed by F0x
+                    () => { const m = chunk.match(/CAT[\.\s]*F[\s\-]?0?([1-4])/i); return m ? m[1] : null; },
+                    // Strategy 2: Standalone F-0x or F0x
+                    () => { const m = chunk.match(/\bF[\s\-]?0?([1-4])\b/i); return m ? m[1] : null; },
+                    // Strategy 3: "TYPE" keyword near Fitness/Impairment/etc
+                    () => {
+                        if (/TYPE\s*(?:Fitness|Fire\s*Guard)/i.test(chunk)) return '4';
+                        return null;
+                    },
+                    // Strategy 4: Certificate description text
+                    () => {
+                        if (/INDOOR.*OUTDOOR.*ASSEMBLY/i.test(chunk)) return '4'; // F-04
+                        if (/TORCH\s*OPERATION/i.test(chunk)) return '1'; // F-01
+                        if (/SHELTERING/i.test(chunk)) return '2'; // F-02
+                        if (/INDOOR\s*PLACE.*ASSEMBLY/i.test(chunk) && !/OUTDOOR/i.test(chunk)) return '3'; // F-03
+                        return null;
+                    },
+                ];
+                for (const strategy of typeStrategies) {
+                    const typeNum = strategy();
+                    if (typeNum) {
+                        data.type = `F-0${typeNum}`;
+                        hasData = true;
+                        break;
+                    }
                 }
 
                 if (hasData) {
@@ -752,16 +885,23 @@
                 columnStyles: { 0: { cellWidth: 15, halign: 'center' } }
             });
 
-            let finalY = doc.lastAutoTable.finalY + 15;
+            // Section 2: Scans — always start on a fresh page
+            doc.addPage();
+            doc.setFillColor(...BRAND.navyRGB);
+            doc.rect(0, 0, pageWidth, 12, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(8);
+            doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, { align: "center" });
+            doc.setTextColor(0, 0, 0);
 
-            // Section 2: Scans
             doc.setFontSize(12);
             doc.setFont("helvetica", "bold");
             doc.setTextColor(...BRAND.navyRGB);
-            doc.text("Digital Verification (Card Scans)", 14, finalY);
+            doc.text("Digital Verification (Card Scans)", 14, 24);
             doc.setTextColor(0, 0, 0);
 
-            let yPos = finalY + 10;
+            let yPos = 34;
             sortedGuards.forEach((guard, index) => {
                 if (yPos > 250) {
                     doc.addPage();
@@ -776,16 +916,15 @@
                     yPos = 22;
                 }
 
-                doc.setFontSize(10);
-                doc.setFont("helvetica", "bold");
-                doc.text(`#${index + 1}: ${guard.name} (${guard.type})`, 14, yPos);
+                const guardLabel = `#${index + 1}: ${guard.name} (${guard.type})`;
 
                 if (guard.originalImage) {
                     try {
                         const imgProps = doc.getImageProperties(guard.originalImage);
                         const pdfWidth = 150;
                         const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                        if (yPos + pdfHeight > 280) {
+                        // Check if label + image fit on current page; if not, move everything to next page
+                        if (yPos + 5 + pdfHeight > 280) {
                              doc.addPage();
                              doc.setFillColor(...BRAND.navyRGB);
                              doc.rect(0, 0, pageWidth, 12, 'F');
@@ -795,9 +934,11 @@
                              doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, { align: "center" });
                              doc.setTextColor(0, 0, 0);
                              yPos = 22;
-                             doc.setFontSize(10);
-                             doc.text(`#${index + 1}: ${guard.name} (${guard.type})`, 14, yPos);
                         }
+                        // Print label once, only on the page where the image will actually go
+                        doc.setFontSize(10);
+                        doc.setFont("helvetica", "bold");
+                        doc.text(guardLabel, 14, yPos);
                         doc.addImage(guard.originalImage, 'JPEG', 14, yPos + 5, pdfWidth, pdfHeight);
                         yPos += pdfHeight + 20;
                     } catch (e) {
@@ -805,6 +946,9 @@
                         yPos += 30;
                     }
                 } else {
+                    doc.setFontSize(10);
+                    doc.setFont("helvetica", "bold");
+                    doc.text(guardLabel, 14, yPos);
                     doc.setFont("helvetica", "italic");
                     doc.setFontSize(9);
                     doc.text("[No Digital Verification Image Available]", 14, yPos + 10);
