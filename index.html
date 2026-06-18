@@ -8,7 +8,6 @@
     <!-- React & Tailwind -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- PDF & OCR Libraries -->
@@ -50,1227 +49,1476 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
-    // --- CONFIGURATION ---
-    const DEFAULT_COMPANY_NAME = "Ares Security Consulting";
-    const PDF_WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-    const STORAGE_KEY = "ares_roster_data_v1";
-    const SETTINGS_KEY = "ares_app_settings_v1";
-    const OCR_CONFIDENCE_THRESHOLD = 70; // Below this = low confidence warning
-    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+<script>
+// --- CONFIGURATION ---
+const DEFAULT_COMPANY_NAME = "Ares Security Consulting";
+const PDF_WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const STORAGE_KEY = "ares_roster_data_v1";
+const SETTINGS_KEY = "ares_app_settings_v1";
+const OCR_CONFIDENCE_THRESHOLD = 70; // Below this = low confidence warning
+const {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback
+} = React;
 
-    // Brand Colors
-    const BRAND = {
-        navy: '#1B2A4A',
-        blue: '#0072CE',
-        green: '#27AE60',
-        orange: '#E67E22',
-        navyRGB: [27, 42, 74],
-        blueRGB: [0, 114, 206],
+// Brand Colors
+const BRAND = {
+  navy: '#1B2A4A',
+  blue: '#0072CE',
+  green: '#27AE60',
+  orange: '#E67E22',
+  navyRGB: [27, 42, 74],
+  blueRGB: [0, 114, 206]
+};
+pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+
+// --- ICONS ---
+const Upload = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "17 8 12 3 7 8"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "3",
+  x2: "12",
+  y2: "15"
+}));
+const FileText = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "14 2 14 8 20 8"
+}));
+const AlertTriangle = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "9",
+  x2: "12",
+  y2: "13"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "17",
+  x2: "12.01",
+  y2: "17"
+}));
+const XCircle = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "10"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "15",
+  y1: "9",
+  x2: "9",
+  y2: "15"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "9",
+  y1: "9",
+  x2: "15",
+  y2: "15"
+}));
+const Download = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "7 10 12 15 17 10"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "12",
+  y1: "15",
+  x2: "12",
+  y2: "3"
+}));
+const FileSpreadsheet = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
+}), /*#__PURE__*/React.createElement("polyline", {
+  points: "14 2 14 8 20 8"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 13h2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M8 17h2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M14 13h2"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M14 17h2"
+}));
+const Loader2 = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M21 12a9 9 0 1 1-6.219-8.56"
+}));
+const UserPlus = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "8.5",
+  cy: "7",
+  r: "4"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "20",
+  y1: "8",
+  x2: "20",
+  y2: "14"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "23",
+  y1: "11",
+  x2: "17",
+  y2: "11"
+}));
+const RefreshCw = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("path", {
+  d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M21 3v5h-5"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M3 21v-5h5"
+}));
+const ChevronUp = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "16",
+  height: "16",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("polyline", {
+  points: "18 15 12 9 6 15"
+}));
+const ChevronDown = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "16",
+  height: "16",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("polyline", {
+  points: "6 9 12 15 18 9"
+}));
+const CloseIcon = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "24",
+  height: "24",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("line", {
+  x1: "18",
+  y1: "6",
+  x2: "6",
+  y2: "18"
+}), /*#__PURE__*/React.createElement("line", {
+  x1: "6",
+  y1: "6",
+  x2: "18",
+  y2: "18"
+}));
+const GripVertical = props => /*#__PURE__*/React.createElement("svg", {
+  xmlns: "http://www.w3.org/2000/svg",
+  width: "16",
+  height: "16",
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: "2",
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+  ...props
+}, /*#__PURE__*/React.createElement("circle", {
+  cx: "9",
+  cy: "5",
+  r: "1"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "15",
+  cy: "5",
+  r: "1"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "9",
+  cy: "12",
+  r: "1"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "15",
+  cy: "12",
+  r: "1"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "9",
+  cy: "19",
+  r: "1"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "15",
+  cy: "19",
+  r: "1"
+}));
+
+// --- HELPER FUNCTIONS ---
+const parseDate = dateStr => {
+  if (!dateStr || dateStr === "N/A") return null;
+  if (dateStr.includes('-')) {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+  const parts = dateStr.split('/');
+  if (parts.length === 3) return new Date(parts[2], parts[0] - 1, parts[1]);
+  return null;
+};
+const getStatus = expDateStr => {
+  const expDate = parseDate(expDateStr);
+  if (!expDate) return {
+    status: 'unknown',
+    label: 'Check Date',
+    color: 'text-gray-500 bg-gray-100'
+  };
+  const today = new Date();
+  const diffTime = expDate - today;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return {
+    status: 'expired',
+    label: 'EXPIRED',
+    color: 'text-red-700 bg-red-100 border border-red-200'
+  };
+  if (diffDays < 30) return {
+    status: 'warning',
+    label: `Expires in ${diffDays}d`,
+    color: 'text-amber-700 bg-amber-100 border border-amber-200'
+  };
+  return {
+    status: 'ok',
+    label: 'Active',
+    color: 'text-green-700 bg-green-100 border border-green-200'
+  };
+};
+
+// [#2] Row background color for internal view only
+const getRowBgClass = expDateStr => {
+  const status = getStatus(expDateStr).status;
+  if (status === 'expired') return 'bg-red-50';
+  if (status === 'warning') return 'bg-amber-50';
+  return '';
+};
+const formatDisplayDate = isoDate => {
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split('-');
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+const formatShortDate = isoDate => {
+  if (!isoDate || isoDate === "N/A") return isoDate;
+  if (!isoDate.includes('-')) return isoDate;
+  const [year, month, day] = isoDate.split('-');
+  return `${month}/${day}/${year}`;
+};
+const readFileAsArrayBuffer = file => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+// [#6] Proper CSV escaping - handles double quotes inside values
+const csvEscape = val => {
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"';
+  }
+  return str;
+};
+
+// --- MODAL COMPONENT ---
+const ImageModal = ({
+  src,
+  onClose
+}) => {
+  if (!src) return null;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl p-2 flex flex-col",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-end mb-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-red-500 transition-colors"
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    className: "w-6 h-6"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "overflow-auto flex-1 flex items-center justify-center bg-gray-100 rounded border"
+  }, /*#__PURE__*/React.createElement("img", {
+    src: src,
+    className: "max-w-full max-h-[80vh] object-contain"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 text-center text-sm text-gray-500"
+  }, "Scroll or use browser zoom to inspect details")));
+};
+
+// --- MAIN COMPONENT ---
+function App() {
+  const [companyName, setCompanyName] = useState(() => {
+    const savedSettings = localStorage.getItem(SETTINGS_KEY);
+    return savedSettings ? JSON.parse(savedSettings).companyName : DEFAULT_COMPANY_NAME;
+  });
+  const companyInitials = useMemo(() => {
+    if (!companyName) return "AS";
+    const words = companyName.trim().split(/\s+/);
+    if (words.length === 0) return "AS";
+    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }, [companyName]);
+  const [guards, setGuards] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [dragActive, setDragActive] = useState(false);
+  const [clientName, setClientName] = useState("Client Name");
+  const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'ascending'
+  });
+
+  // [#1] Drag-and-drop reorder state
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [dragOverPosition, setDragOverPosition] = useState(null); // 'top' or 'bottom'
+
+  // Effect: Save Guards
+  useEffect(() => {
+    try {
+      const storageGuards = guards.map(({
+        originalImage,
+        ...rest
+      }) => rest);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(storageGuards));
+    } catch (error) {
+      console.warn("Could not save draft to LocalStorage (Quota Exceeded):", error);
+    }
+  }, [guards]);
+
+  // Effect: Save Settings
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        companyName
+      }));
+    } catch (error) {
+      console.warn("Could not save settings:", error);
+    }
+  }, [companyName]);
+
+  // Duplicate Detection
+  const duplicateMap = useMemo(() => {
+    const counts = {};
+    guards.forEach(g => {
+      if (g.cert && g.cert.trim() !== "") {
+        counts[g.cert] = (counts[g.cert] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [guards]);
+
+  // Sorting Logic
+  const sortedGuards = useMemo(() => {
+    let sortableItems = [...guards];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        let aVal = a[sortConfig.key] || "";
+        let bVal = b[sortConfig.key] || "";
+        if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [guards, sortConfig]);
+  const requestSort = key => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({
+      key,
+      direction
+    });
+  };
+  const SortIcon = ({
+    colKey
+  }) => {
+    if (sortConfig.key !== colKey) return /*#__PURE__*/React.createElement("span", {
+      className: "sort-icon text-gray-300"
+    }, /*#__PURE__*/React.createElement(ChevronDown, null));
+    return sortConfig.direction === 'ascending' ? /*#__PURE__*/React.createElement("span", {
+      className: "sort-icon sort-active"
+    }, /*#__PURE__*/React.createElement(ChevronUp, null)) : /*#__PURE__*/React.createElement("span", {
+      className: "sort-icon sort-active"
+    }, /*#__PURE__*/React.createElement(ChevronDown, null));
+  };
+
+  // --- [#1] DRAG-AND-DROP REORDER HANDLERS ---
+  const handleRowDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Make drag image semi-transparent
+    if (e.target.closest('tr')) {
+      e.target.closest('tr').classList.add('dragging');
+    }
+  };
+  const handleRowDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex === null || draggedIndex === index) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const pos = e.clientY < midY ? 'top' : 'bottom';
+    setDragOverIndex(index);
+    setDragOverPosition(pos);
+  };
+  const handleRowDragEnd = () => {
+    // Clean up all drag states
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setDragOverPosition(null);
+    document.querySelectorAll('tr.dragging').forEach(el => el.classList.remove('dragging'));
+  };
+  const handleRowDrop = (e, dropIndex) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      handleRowDragEnd();
+      return;
+    }
+
+    // Clear any active sort when manually reordering
+    setSortConfig({
+      key: null,
+      direction: 'ascending'
+    });
+    setGuards(prev => {
+      const updated = [...prev];
+      const [dragged] = updated.splice(draggedIndex, 1);
+      let insertAt = dropIndex;
+      // Adjust if we're dropping below the midpoint
+      if (dragOverPosition === 'bottom') {
+        insertAt = draggedIndex < dropIndex ? dropIndex : dropIndex + 1;
+      } else {
+        insertAt = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+      }
+      updated.splice(insertAt, 0, dragged);
+      return updated;
+    });
+    handleRowDragEnd();
+  };
+
+  // Handle file upload area Drag Events
+  const handleDrag = e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+  const handleDrop = async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      await processFiles(Array.from(e.dataTransfer.files));
+    }
+  };
+  const handleFileInput = async e => {
+    if (e.target.files && e.target.files.length > 0) {
+      await processFiles(Array.from(e.target.files));
+      // [#8] Reset file input so re-uploading the same file triggers onChange
+      e.target.value = '';
+    }
+  };
+  const handleManualAdd = () => {
+    const newGuard = {
+      id: Date.now(),
+      name: "New Guard",
+      type: "F-04",
+      cert: "",
+      exp: "",
+      confidence: 100,
+      // Manual = full confidence
+      originalImage: null
+    };
+    setGuards(prev => [newGuard, ...prev]);
+  };
+  const clearAll = () => {
+    if (confirm("Are you sure you want to clear the entire list? This cannot be undone.")) {
+      setGuards([]);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
+
+  // --- PROCESSING LOGIC ---
+  const processFiles = async files => {
+    setIsProcessing(true);
+    setProgress("Initializing Scanner Engine...");
+    try {
+      const worker = await Tesseract.createWorker('eng');
+      const newGuards = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.type === "application/pdf") {
+          setProgress(`Processing PDF: ${file.name}...`);
+          try {
+            const extracted = await processPDF(file, worker);
+            newGuards.push(...extracted);
+          } catch (err) {
+            console.error(err);
+            alert(`Error processing ${file.name}: ${err.message}`);
+          }
+        } else if (file.type.startsWith("image/")) {
+          setProgress(`Processing Image: ${file.name}...`);
+          try {
+            const extracted = await processImage(file, worker);
+            newGuards.push(...extracted);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+      setGuards(prev => [...prev, ...newGuards]);
+      setProgress("Cleaning up...");
+      await worker.terminate();
+    } catch (err) {
+      console.error("Scanner initialization failed:", err);
+      alert("Failed to start the scanner engine.");
+    } finally {
+      setIsProcessing(false);
+      setProgress("");
+    }
+  };
+
+  // --- PDF NATIVE TEXT EXTRACTION (instant, 100% accurate when available) ---
+  const extractPdfTextLayer = async page => {
+    try {
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(item => item.str).join(' ');
+      // Only trust if there's meaningful content (not just whitespace/headers)
+      if (text.replace(/\s+/g, '').length > 20) return text;
+      return null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // --- MULTI-PASS OCR: Run multiple filter presets, pick best confidence ---
+  const OCR_PRESETS = [{
+    name: 'standard',
+    filter: 'grayscale(100%) contrast(150%) brightness(110%)'
+  }, {
+    name: 'high-contrast',
+    filter: 'grayscale(100%) contrast(200%) brightness(120%)'
+  }, {
+    name: 'dark-boost',
+    filter: 'grayscale(100%) contrast(180%) brightness(140%)'
+  }, {
+    name: 'sharp',
+    filter: 'grayscale(100%) contrast(170%) brightness(100%) saturate(0)'
+  }];
+  const multiPassOCR = async (sourceCanvas, worker) => {
+    let bestResult = {
+      text: '',
+      confidence: 0
+    };
+    for (const preset of OCR_PRESETS) {
+      const ocrCanvas = document.createElement('canvas');
+      ocrCanvas.width = sourceCanvas.width;
+      ocrCanvas.height = sourceCanvas.height;
+      const ocrCtx = ocrCanvas.getContext('2d');
+      ocrCtx.filter = preset.filter;
+      ocrCtx.drawImage(sourceCanvas, 0, 0);
+      const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.85);
+      const {
+        data
+      } = await worker.recognize(ocrImg);
+      const confidence = Math.round(data.confidence);
+
+      // Keep the result with highest confidence
+      if (confidence > bestResult.confidence) {
+        bestResult = {
+          text: data.text,
+          confidence
+        };
+      }
+      ocrCanvas.width = 0;
+      ocrCanvas.height = 0;
+
+      // If we hit 85%+ confidence, no need to try more passes
+      if (confidence >= 85) break;
+    }
+    return bestResult;
+  };
+  const processPDF = async (file, worker) => {
+    try {
+      const arrayBuffer = await readFileAsArrayBuffer(file);
+      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+      const results = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        setProgress(`Scanning Page ${i} of ${pdf.numPages}...`);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({
+          scale: 2.0
+        });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise;
+        const displayImg = canvas.toDataURL('image/jpeg', 0.7);
+
+        // STRATEGY 1: Try native PDF text layer first (instant + perfect)
+        let extractedText = await extractPdfTextLayer(page);
+        let confidence = 100;
+
+        // STRATEGY 2: If no embedded text, run multi-pass OCR
+        if (!extractedText) {
+          setProgress(`OCR Scanning Page ${i} of ${pdf.numPages}...`);
+          const ocrResult = await multiPassOCR(canvas, worker);
+          extractedText = ocrResult.text;
+          confidence = ocrResult.confidence;
+        } else {
+          setProgress(`Text extracted from Page ${i} (native)...`);
+        }
+        const foundGuards = parseText(extractedText);
+        foundGuards.forEach(info => {
+          if (info.name !== "UNKNOWN" || info.type !== "N/A" || info.cert !== "N/A") {
+            results.push({
+              ...info,
+              id: Date.now() + Math.random(),
+              originalImage: displayImg,
+              confidence
+            });
+          }
+        });
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      return results;
+    } catch (error) {
+      console.error("PDF Processing Error:", error);
+      throw new Error("Could not read PDF. " + error.message);
+    }
+  };
+  const processImage = async (file, worker) => {
+    const reader = new FileReader();
+    return new Promise((resolve, reject) => {
+      reader.onload = async e => {
+        const img = new Image();
+        img.onload = async () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          const displayImg = canvas.toDataURL('image/jpeg', 0.7);
+
+          // Multi-pass OCR for best accuracy
+          const ocrResult = await multiPassOCR(canvas, worker);
+          const foundGuards = parseText(ocrResult.text);
+          let results = foundGuards.map(info => ({
+            ...info,
+            id: Date.now() + Math.random(),
+            originalImage: displayImg,
+            confidence: ocrResult.confidence
+          }));
+          if (results.length === 0) {
+            results.push({
+              name: "",
+              type: "F-04",
+              cert: "",
+              exp: "",
+              id: Date.now() + Math.random(),
+              originalImage: displayImg,
+              confidence: 0
+            });
+          }
+          canvas.width = 0;
+          canvas.height = 0;
+          resolve(results);
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // --- ENHANCED PARSER: Multiple regex strategies per field ---
+  const parseText = text => {
+    const results = [];
+    const cleanText = text.replace(/[\r\n]+/g, '\n');
+
+    // Split by known FDNY cert headers to handle multiple certs per page
+    let chunks = cleanText.split(/(?:CERTIFICATE\s+ISSUED\s+BY\s+FDNY|FIRE\s+DEPARTMENT\s+(?:OF\s+)?(?:THE\s+)?(?:CITY\s+OF\s+)?NEW\s+YORK)/i);
+    if (chunks.length > 1 && chunks[0].trim().length < 10) {
+      chunks.shift();
+    }
+    if (chunks.length === 0) chunks = [cleanText];
+    const convertToISO = d => {
+      const parts = d.split('/');
+      if (parts.length === 3) {
+        const [m, day, y] = parts;
+        const month = m.padStart(2, '0');
+        const dd = day.padStart(2, '0');
+        const year = y.length === 2 ? '20' + y : y;
+        return `${year}-${month}-${dd}`;
+      }
+      return d;
     };
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+    // Clean up OCR artifacts from a name string
+    const cleanName = raw => {
+      return raw.replace(/[^A-Za-z\s\.\-']/g, '') // Strip digits, special chars
+      .replace(/\s{2,}/g, ' ') // Collapse multiple spaces
+      .trim().split('\n')[0] // Only first line
+      .trim();
+    };
+    chunks.forEach(chunk => {
+      let data = {
+        name: "UNKNOWN",
+        type: "N/A",
+        cert: "N/A",
+        exp: "N/A"
+      };
+      let hasData = false;
 
-    // --- ICONS ---
-    const Upload = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-    );
-    const FileText = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/>
-        </svg>
-    );
-    const AlertTriangle = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-        </svg>
-    );
-    const XCircle = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-        </svg>
-    );
-    const Download = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-        </svg>
-    );
-    const FileSpreadsheet = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/>
-        </svg>
-    );
-    const Loader2 = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-        </svg>
-    );
-    const UserPlus = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
-        </svg>
-    );
-    const RefreshCw = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/>
-        </svg>
-    );
-    const ChevronUp = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <polyline points="18 15 12 9 6 15"/>
-        </svg>
-    );
-    const ChevronDown = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <polyline points="6 9 12 15 18 9"/>
-        </svg>
-    );
-    const CloseIcon = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-    );
-    const GripVertical = (props) => (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-            <circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>
-        </svg>
-    );
-
-    // --- HELPER FUNCTIONS ---
-    const parseDate = (dateStr) => {
-        if (!dateStr || dateStr === "N/A") return null;
-        if (dateStr.includes('-')) {
-             const parts = dateStr.split('-');
-             if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]);
-        }
-        const parts = dateStr.split('/');
-        if (parts.length === 3) return new Date(parts[2], parts[0] - 1, parts[1]);
+      // ============ NAME EXTRACTION (multiple strategies) ============
+      const nameStrategies = [
+      // Strategy 1: "NAME" keyword followed by text
+      () => {
+        const m = chunk.match(/NAME\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
+        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
         return null;
-    };
-
-    const getStatus = (expDateStr) => {
-        const expDate = parseDate(expDateStr);
-        if (!expDate) return { status: 'unknown', label: 'Check Date', color: 'text-gray-500 bg-gray-100' };
-        const today = new Date();
-        const diffTime = expDate - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays < 0) return { status: 'expired', label: 'EXPIRED', color: 'text-red-700 bg-red-100 border border-red-200' };
-        if (diffDays < 30) return { status: 'warning', label: `Expires in ${diffDays}d`, color: 'text-amber-700 bg-amber-100 border border-amber-200' };
-        return { status: 'ok', label: 'Active', color: 'text-green-700 bg-green-100 border border-green-200' };
-    };
-
-    // [#2] Row background color for internal view only
-    const getRowBgClass = (expDateStr) => {
-        const status = getStatus(expDateStr).status;
-        if (status === 'expired') return 'bg-red-50';
-        if (status === 'warning') return 'bg-amber-50';
-        return '';
-    };
-
-    const formatDisplayDate = (isoDate) => {
-        if (!isoDate) return "";
-        const [year, month, day] = isoDate.split('-');
-        const date = new Date(year, month - 1, day);
-        return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    };
-
-    const formatShortDate = (isoDate) => {
-         if (!isoDate || isoDate === "N/A") return isoDate;
-         if (!isoDate.includes('-')) return isoDate;
-         const [year, month, day] = isoDate.split('-');
-         return `${month}/${day}/${year}`;
-    };
-
-    const readFileAsArrayBuffer = (file) => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => reject(reader.error);
-            reader.readAsArrayBuffer(file);
-        });
-    };
-
-    // [#6] Proper CSV escaping - handles double quotes inside values
-    const csvEscape = (val) => {
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return '"' + str.replace(/"/g, '""') + '"';
+      },
+      // Strategy 2: "NAME" on its own line, name on next line
+      () => {
+        const m = chunk.match(/NAME\s*\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
+        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
+        return null;
+      },
+      // Strategy 3: After ISSUED line
+      () => {
+        const m = chunk.match(/ISSUED.*?\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
+        if (m && m[1].trim().length >= 5) return cleanName(m[1]);
+        return null;
+      },
+      // Strategy 4: "NANE" or "MAME" (common OCR misreads of NAME)
+      () => {
+        const m = chunk.match(/(?:NANE|MAME|NAМЕ)\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
+        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
+        return null;
+      }];
+      for (const strategy of nameStrategies) {
+        const name = strategy();
+        if (name && name.length >= 3) {
+          data.name = name;
+          hasData = true;
+          break;
         }
-        return str;
-    };
+      }
 
-    // --- MODAL COMPONENT ---
-    const ImageModal = ({ src, onClose }) => {
-        if (!src) return null;
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4" onClick={onClose}>
-                <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl p-2 flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="flex justify-end mb-2">
-                        <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-red-500 transition-colors">
-                            <CloseIcon className="w-6 h-6" />
-                        </button>
-                    </div>
-                    <div className="overflow-auto flex-1 flex items-center justify-center bg-gray-100 rounded border">
-                        <img src={src} className="max-w-full max-h-[80vh] object-contain" />
-                    </div>
-                    <div className="mt-2 text-center text-sm text-gray-500">
-                        Scroll or use browser zoom to inspect details
-                    </div>
-                </div>
-            </div>
-        );
-    };
+      // ============ CERT # EXTRACTION (multiple strategies) ============
+      const certStrategies = [
+      // Strategy 1: "CERT.#" or "CERT #" followed by digits
+      () => {
+        const m = chunk.match(/CERT[\.\s]*#?\s*(\d{7,8})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 2: "NO." or "NO #" followed by digits
+      () => {
+        const m = chunk.match(/NO[\.\s]*#?\s*(\d{7,8})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 3: "CERTIFICATE" near a number block
+      () => {
+        const m = chunk.match(/CERTIFICATE[\s\S]{0,30}?(\d{7,8})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 4: "GERT" or "CERI" (OCR misreads of CERT)
+      () => {
+        const m = chunk.match(/(?:GERT|CERI|CERTI?)[\.\s]*#?\s*(\d{7,8})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 5: Standalone 8-digit number (likely cert if other fields found)
+      () => {
+        const m = chunk.match(/\b(\d{8})\b/);
+        return m ? m[1] : null;
+      }];
+      for (const strategy of certStrategies) {
+        const cert = strategy();
+        if (cert) {
+          data.cert = cert;
+          hasData = true;
+          break;
+        }
+      }
 
-    // --- MAIN COMPONENT ---
-    function App() {
-        const [companyName, setCompanyName] = useState(() => {
-            const savedSettings = localStorage.getItem(SETTINGS_KEY);
-            return savedSettings ? JSON.parse(savedSettings).companyName : DEFAULT_COMPANY_NAME;
+      // ============ EXPIRATION DATE EXTRACTION (multiple strategies) ============
+      const dateStrategies = [
+      // Strategy 1: "EXPIRES" keyword
+      () => {
+        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 2: "EXP" abbreviation
+      () => {
+        const m = chunk.match(/EXP[\.\s]*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 3: Date after ISSUED date (second date = expiration)
+      () => {
+        const dates = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g);
+        // If two dates found, second is typically expiration
+        if (dates && dates.length >= 2) return dates[1];
+        return null;
+      },
+      // Strategy 4: Any date as last resort
+      () => {
+        const m = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
+        return m ? m[1] : null;
+      },
+      // Strategy 5: Dates with dashes (MM-DD-YYYY)
+      () => {
+        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2})-(\d{1,2})-(\d{2,4})/i);
+        if (m) return `${m[1]}/${m[2]}/${m[3]}`;
+        return null;
+      }];
+      for (const strategy of dateStrategies) {
+        const dateStr = strategy();
+        if (dateStr) {
+          data.exp = convertToISO(dateStr);
+          hasData = true;
+          break;
+        }
+      }
+
+      // ============ TYPE EXTRACTION (multiple strategies) ============
+      const typeStrategies = [
+      // Strategy 1: "CAT." or "CAT" followed by F0x
+      () => {
+        const m = chunk.match(/CAT[\.\s]*F[\s\-]?0?([1-4])/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 2: Standalone F-0x or F0x
+      () => {
+        const m = chunk.match(/\bF[\s\-]?0?([1-4])\b/i);
+        return m ? m[1] : null;
+      },
+      // Strategy 3: "TYPE" keyword near Fitness/Impairment/etc
+      () => {
+        if (/TYPE\s*(?:Fitness|Fire\s*Guard)/i.test(chunk)) return '4';
+        return null;
+      },
+      // Strategy 4: Certificate description text
+      () => {
+        if (/INDOOR.*OUTDOOR.*ASSEMBLY/i.test(chunk)) return '4'; // F-04
+        if (/TORCH\s*OPERATION/i.test(chunk)) return '1'; // F-01
+        if (/SHELTERING/i.test(chunk)) return '2'; // F-02
+        if (/INDOOR\s*PLACE.*ASSEMBLY/i.test(chunk) && !/OUTDOOR/i.test(chunk)) return '3'; // F-03
+        return null;
+      }];
+      for (const strategy of typeStrategies) {
+        const typeNum = strategy();
+        if (typeNum) {
+          data.type = `F-0${typeNum}`;
+          hasData = true;
+          break;
+        }
+      }
+      if (hasData) {
+        results.push(data);
+      }
+    });
+    return results;
+  };
+
+  // --- [#6] CSV GENERATION with proper escaping ---
+  const generateCSV = () => {
+    const csvRows = [];
+    csvRows.push(["#", "Full Name", "Type", "Certificate #", "Expiration Date", "Status"].join(","));
+    sortedGuards.forEach((g, index) => {
+      const status = getStatus(g.exp).label;
+      const row = [index + 1, csvEscape(g.name), csvEscape(g.type), csvEscape(g.cert), csvEscape(formatShortDate(g.exp)), csvEscape(status)];
+      csvRows.push(row.join(","));
+    });
+    const csvString = csvRows.join("\n");
+    const blob = new Blob([csvString], {
+      type: 'text/csv'
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+    a.setAttribute('download', `${safeClientName}_${eventDate}_Roster.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  // --- [#4] PDF GENERATION with Ares branding ---
+  const generatePDF = () => {
+    const {
+      jsPDF
+    } = window.jspdf;
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // --- Branded Header ---
+    // Navy bar across top
+    doc.setFillColor(...BRAND.navyRGB);
+    doc.rect(0, 0, pageWidth, 28, 'F');
+
+    // Company name in white
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(companyName, pageWidth / 2, 13, {
+      align: "center"
+    });
+
+    // Subtitle
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text("Fireguard Roster & Compliance Report", pageWidth / 2, 22, {
+      align: "center"
+    });
+
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
+    // Blue accent line
+    doc.setDrawColor(...BRAND.blueRGB);
+    doc.setLineWidth(0.8);
+    doc.line(14, 30, pageWidth - 14, 30);
+
+    // Client / Date info
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.text(`Client: ${clientName}`, 14, 40);
+    doc.text(`Date: ${formatDisplayDate(eventDate)}`, 14, 47);
+    doc.text(`Total Personnel: ${sortedGuards.length}`, 14, 54);
+
+    // Section header
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(...BRAND.navyRGB);
+    doc.text("Personnel Summary", 14, 66);
+    doc.setTextColor(0, 0, 0);
+    const tableBody = sortedGuards.map((g, index) => [index + 1, g.name, g.type, g.cert, formatShortDate(g.exp)]);
+    doc.autoTable({
+      startY: 70,
+      head: [['#', 'Full Name', 'Type', 'Certificate #', 'Expiration']],
+      body: tableBody,
+      theme: 'striped',
+      headStyles: {
+        fillColor: BRAND.navyRGB,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      styles: {
+        fontSize: 10,
+        cellPadding: 4
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 15,
+          halign: 'center'
+        }
+      }
+    });
+
+    // Section 2: Scans — always start on a fresh page
+    doc.addPage();
+    doc.setFillColor(...BRAND.navyRGB);
+    doc.rect(0, 0, pageWidth, 12, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
+      align: "center"
+    });
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...BRAND.navyRGB);
+    doc.text("Digital Verification (Card Scans)", 14, 24);
+    doc.setTextColor(0, 0, 0);
+    let yPos = 34;
+    sortedGuards.forEach((guard, index) => {
+      if (yPos > 250) {
+        doc.addPage();
+        // Repeat header bar on new pages
+        doc.setFillColor(...BRAND.navyRGB);
+        doc.rect(0, 0, pageWidth, 12, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
+          align: "center"
         });
-
-        const companyInitials = useMemo(() => {
-            if (!companyName) return "AS";
-            const words = companyName.trim().split(/\s+/);
-            if (words.length === 0) return "AS";
-            if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-            return (words[0][0] + words[1][0]).toUpperCase();
-        }, [companyName]);
-
-        const [guards, setGuards] = useState(() => {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            return saved ? JSON.parse(saved) : [];
-        });
-
-        const [isProcessing, setIsProcessing] = useState(false);
-        const [progress, setProgress] = useState("");
-        const [dragActive, setDragActive] = useState(false);
-        const [clientName, setClientName] = useState("Client Name");
-        const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
-        const [selectedImage, setSelectedImage] = useState(null);
-
-        // Sorting State
-        const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-
-        // [#1] Drag-and-drop reorder state
-        const [draggedIndex, setDraggedIndex] = useState(null);
-        const [dragOverIndex, setDragOverIndex] = useState(null);
-        const [dragOverPosition, setDragOverPosition] = useState(null); // 'top' or 'bottom'
-
-        // Effect: Save Guards
-        useEffect(() => {
-            try {
-                const storageGuards = guards.map(({ originalImage, ...rest }) => rest);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(storageGuards));
-            } catch (error) {
-                console.warn("Could not save draft to LocalStorage (Quota Exceeded):", error);
-            }
-        }, [guards]);
-
-        // Effect: Save Settings
-        useEffect(() => {
-            try {
-                localStorage.setItem(SETTINGS_KEY, JSON.stringify({ companyName }));
-            } catch (error) {
-                console.warn("Could not save settings:", error);
-            }
-        }, [companyName]);
-
-        // Duplicate Detection
-        const duplicateMap = useMemo(() => {
-            const counts = {};
-            guards.forEach(g => {
-                if (g.cert && g.cert.trim() !== "") {
-                    counts[g.cert] = (counts[g.cert] || 0) + 1;
-                }
-            });
-            return counts;
-        }, [guards]);
-
-        // Sorting Logic
-        const sortedGuards = useMemo(() => {
-            let sortableItems = [...guards];
-            if (sortConfig.key !== null) {
-                sortableItems.sort((a, b) => {
-                    let aVal = a[sortConfig.key] || "";
-                    let bVal = b[sortConfig.key] || "";
-                    if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
-                    if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
-                    return 0;
-                });
-            }
-            return sortableItems;
-        }, [guards, sortConfig]);
-
-        const requestSort = (key) => {
-            let direction = 'ascending';
-            if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-                direction = 'descending';
-            }
-            setSortConfig({ key, direction });
-        };
-
-        const SortIcon = ({ colKey }) => {
-            if (sortConfig.key !== colKey) return <span className="sort-icon text-gray-300"><ChevronDown /></span>;
-            return sortConfig.direction === 'ascending'
-                ? <span className="sort-icon sort-active"><ChevronUp /></span>
-                : <span className="sort-icon sort-active"><ChevronDown /></span>;
-        };
-
-        // --- [#1] DRAG-AND-DROP REORDER HANDLERS ---
-        const handleRowDragStart = (e, index) => {
-            setDraggedIndex(index);
-            e.dataTransfer.effectAllowed = 'move';
-            // Make drag image semi-transparent
-            if (e.target.closest('tr')) {
-                e.target.closest('tr').classList.add('dragging');
-            }
-        };
-
-        const handleRowDragOver = (e, index) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            if (draggedIndex === null || draggedIndex === index) return;
-
-            const rect = e.currentTarget.getBoundingClientRect();
-            const midY = rect.top + rect.height / 2;
-            const pos = e.clientY < midY ? 'top' : 'bottom';
-
-            setDragOverIndex(index);
-            setDragOverPosition(pos);
-        };
-
-        const handleRowDragEnd = () => {
-            // Clean up all drag states
-            setDraggedIndex(null);
-            setDragOverIndex(null);
-            setDragOverPosition(null);
-            document.querySelectorAll('tr.dragging').forEach(el => el.classList.remove('dragging'));
-        };
-
-        const handleRowDrop = (e, dropIndex) => {
-            e.preventDefault();
-            if (draggedIndex === null || draggedIndex === dropIndex) {
-                handleRowDragEnd();
-                return;
-            }
-
-            // Clear any active sort when manually reordering
-            setSortConfig({ key: null, direction: 'ascending' });
-
-            setGuards(prev => {
-                const updated = [...prev];
-                const [dragged] = updated.splice(draggedIndex, 1);
-                let insertAt = dropIndex;
-                // Adjust if we're dropping below the midpoint
-                if (dragOverPosition === 'bottom') {
-                    insertAt = draggedIndex < dropIndex ? dropIndex : dropIndex + 1;
-                } else {
-                    insertAt = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-                }
-                updated.splice(insertAt, 0, dragged);
-                return updated;
-            });
-
-            handleRowDragEnd();
-        };
-
-        // Handle file upload area Drag Events
-        const handleDrag = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.type === "dragenter" || e.type === "dragover") {
-                setDragActive(true);
-            } else if (e.type === "dragleave") {
-                setDragActive(false);
-            }
-        };
-
-        const handleDrop = async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragActive(false);
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                await processFiles(Array.from(e.dataTransfer.files));
-            }
-        };
-
-        const handleFileInput = async (e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                await processFiles(Array.from(e.target.files));
-                // [#8] Reset file input so re-uploading the same file triggers onChange
-                e.target.value = '';
-            }
-        };
-
-        const handleManualAdd = () => {
-            const newGuard = {
-                id: Date.now(),
-                name: "New Guard",
-                type: "F-04",
-                cert: "",
-                exp: "",
-                confidence: 100, // Manual = full confidence
-                originalImage: null
-            };
-            setGuards(prev => [newGuard, ...prev]);
-        };
-
-        const clearAll = () => {
-            if(confirm("Are you sure you want to clear the entire list? This cannot be undone.")) {
-                setGuards([]);
-                localStorage.removeItem(STORAGE_KEY);
-            }
-        };
-
-        // --- PROCESSING LOGIC ---
-        const processFiles = async (files) => {
-            setIsProcessing(true);
-            setProgress("Initializing Scanner Engine...");
-
-            try {
-                const worker = await Tesseract.createWorker('eng');
-                const newGuards = [];
-
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-
-                    if (file.type === "application/pdf") {
-                        setProgress(`Processing PDF: ${file.name}...`);
-                        try {
-                            const extracted = await processPDF(file, worker);
-                            newGuards.push(...extracted);
-                        } catch (err) {
-                            console.error(err);
-                            alert(`Error processing ${file.name}: ${err.message}`);
-                        }
-                    } else if (file.type.startsWith("image/")) {
-                        setProgress(`Processing Image: ${file.name}...`);
-                        try {
-                            const extracted = await processImage(file, worker);
-                            newGuards.push(...extracted);
-                        } catch (err) {
-                            console.error(err);
-                        }
-                    }
-                }
-
-                setGuards(prev => [...prev, ...newGuards]);
-                setProgress("Cleaning up...");
-                await worker.terminate();
-
-            } catch (err) {
-                console.error("Scanner initialization failed:", err);
-                alert("Failed to start the scanner engine.");
-            } finally {
-                setIsProcessing(false);
-                setProgress("");
-            }
-        };
-
-        // --- PDF NATIVE TEXT EXTRACTION (instant, 100% accurate when available) ---
-        const extractPdfTextLayer = async (page) => {
-            try {
-                const textContent = await page.getTextContent();
-                const text = textContent.items.map(item => item.str).join(' ');
-                // Only trust if there's meaningful content (not just whitespace/headers)
-                if (text.replace(/\s+/g, '').length > 20) return text;
-                return null;
-            } catch (e) {
-                return null;
-            }
-        };
-
-        // --- MULTI-PASS OCR: Run multiple filter presets, pick best confidence ---
-        const OCR_PRESETS = [
-            { name: 'standard',  filter: 'grayscale(100%) contrast(150%) brightness(110%)' },
-            { name: 'high-contrast', filter: 'grayscale(100%) contrast(200%) brightness(120%)' },
-            { name: 'dark-boost', filter: 'grayscale(100%) contrast(180%) brightness(140%)' },
-            { name: 'sharp', filter: 'grayscale(100%) contrast(170%) brightness(100%) saturate(0)' },
-        ];
-
-        const multiPassOCR = async (sourceCanvas, worker) => {
-            let bestResult = { text: '', confidence: 0 };
-
-            for (const preset of OCR_PRESETS) {
-                const ocrCanvas = document.createElement('canvas');
-                ocrCanvas.width = sourceCanvas.width;
-                ocrCanvas.height = sourceCanvas.height;
-                const ocrCtx = ocrCanvas.getContext('2d');
-                ocrCtx.filter = preset.filter;
-                ocrCtx.drawImage(sourceCanvas, 0, 0);
-                const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.85);
-
-                const { data } = await worker.recognize(ocrImg);
-                const confidence = Math.round(data.confidence);
-
-                // Keep the result with highest confidence
-                if (confidence > bestResult.confidence) {
-                    bestResult = { text: data.text, confidence };
-                }
-
-                ocrCanvas.width = 0; ocrCanvas.height = 0;
-
-                // If we hit 85%+ confidence, no need to try more passes
-                if (confidence >= 85) break;
-            }
-
-            return bestResult;
-        };
-
-        const processPDF = async (file, worker) => {
-            try {
-                const arrayBuffer = await readFileAsArrayBuffer(file);
-                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-                const results = [];
-
-                for (let i = 1; i <= pdf.numPages; i++) {
-                    setProgress(`Scanning Page ${i} of ${pdf.numPages}...`);
-                    await new Promise(resolve => setTimeout(resolve, 50));
-
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 2.0 });
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
-                    await page.render({ canvasContext: context, viewport: viewport }).promise;
-
-                    const displayImg = canvas.toDataURL('image/jpeg', 0.7);
-
-                    // STRATEGY 1: Try native PDF text layer first (instant + perfect)
-                    let extractedText = await extractPdfTextLayer(page);
-                    let confidence = 100;
-
-                    // STRATEGY 2: If no embedded text, run multi-pass OCR
-                    if (!extractedText) {
-                        setProgress(`OCR Scanning Page ${i} of ${pdf.numPages}...`);
-                        const ocrResult = await multiPassOCR(canvas, worker);
-                        extractedText = ocrResult.text;
-                        confidence = ocrResult.confidence;
-                    } else {
-                        setProgress(`Text extracted from Page ${i} (native)...`);
-                    }
-
-                    const foundGuards = parseText(extractedText);
-
-                    foundGuards.forEach(info => {
-                        if (info.name !== "UNKNOWN" || info.type !== "N/A" || info.cert !== "N/A") {
-                             results.push({
-                                 ...info,
-                                 id: Date.now() + Math.random(),
-                                 originalImage: displayImg,
-                                 confidence
-                             });
-                        }
-                    });
-
-                    canvas.width = 0; canvas.height = 0;
-                }
-                return results;
-            } catch (error) {
-                console.error("PDF Processing Error:", error);
-                throw new Error("Could not read PDF. " + error.message);
-            }
-        };
-
-        const processImage = async (file, worker) => {
-            const reader = new FileReader();
-            return new Promise((resolve, reject) => {
-                reader.onload = async (e) => {
-                    const img = new Image();
-                    img.onload = async () => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0);
-
-                        const displayImg = canvas.toDataURL('image/jpeg', 0.7);
-
-                        // Multi-pass OCR for best accuracy
-                        const ocrResult = await multiPassOCR(canvas, worker);
-                        const foundGuards = parseText(ocrResult.text);
-
-                        let results = foundGuards.map(info => ({
-                            ...info,
-                            id: Date.now() + Math.random(),
-                            originalImage: displayImg,
-                            confidence: ocrResult.confidence
-                        }));
-
-                        if (results.length === 0) {
-                            results.push({
-                                name: "",
-                                type: "F-04",
-                                cert: "",
-                                exp: "",
-                                id: Date.now() + Math.random(),
-                                originalImage: displayImg,
-                                confidence: 0
-                            });
-                        }
-
-                        canvas.width = 0; canvas.height = 0;
-                        resolve(results);
-                    };
-                    img.src = e.target.result;
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        };
-
-        // --- ENHANCED PARSER: Multiple regex strategies per field ---
-        const parseText = (text) => {
-            const results = [];
-            const cleanText = text.replace(/[\r\n]+/g, '\n');
-
-            // Split by known FDNY cert headers to handle multiple certs per page
-            let chunks = cleanText.split(/(?:CERTIFICATE\s+ISSUED\s+BY\s+FDNY|FIRE\s+DEPARTMENT\s+(?:OF\s+)?(?:THE\s+)?(?:CITY\s+OF\s+)?NEW\s+YORK)/i);
-
-            if (chunks.length > 1 && chunks[0].trim().length < 10) {
-                chunks.shift();
-            }
-            if (chunks.length === 0) chunks = [cleanText];
-
-            const convertToISO = (d) => {
-                const parts = d.split('/');
-                if (parts.length === 3) {
-                    const [m, day, y] = parts;
-                    const month = m.padStart(2, '0');
-                    const dd = day.padStart(2, '0');
-                    const year = y.length === 2 ? '20' + y : y;
-                    return `${year}-${month}-${dd}`;
-                }
-                return d;
-            };
-
-            // Clean up OCR artifacts from a name string
-            const cleanName = (raw) => {
-                return raw
-                    .replace(/[^A-Za-z\s\.\-']/g, '') // Strip digits, special chars
-                    .replace(/\s{2,}/g, ' ')           // Collapse multiple spaces
-                    .trim()
-                    .split('\n')[0]                    // Only first line
-                    .trim();
-            };
-
-            chunks.forEach(chunk => {
-                let data = { name: "UNKNOWN", type: "N/A", cert: "N/A", exp: "N/A" };
-                let hasData = false;
-
-                // ============ NAME EXTRACTION (multiple strategies) ============
-                const nameStrategies = [
-                    // Strategy 1: "NAME" keyword followed by text
-                    () => {
-                        const m = chunk.match(/NAME\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
-                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-                        return null;
-                    },
-                    // Strategy 2: "NAME" on its own line, name on next line
-                    () => {
-                        const m = chunk.match(/NAME\s*\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
-                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-                        return null;
-                    },
-                    // Strategy 3: After ISSUED line
-                    () => {
-                        const m = chunk.match(/ISSUED.*?\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
-                        if (m && m[1].trim().length >= 5) return cleanName(m[1]);
-                        return null;
-                    },
-                    // Strategy 4: "NANE" or "MAME" (common OCR misreads of NAME)
-                    () => {
-                        const m = chunk.match(/(?:NANE|MAME|NAМЕ)\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
-                        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-                        return null;
-                    },
-                ];
-                for (const strategy of nameStrategies) {
-                    const name = strategy();
-                    if (name && name.length >= 3) {
-                        data.name = name;
-                        hasData = true;
-                        break;
-                    }
-                }
-
-                // ============ CERT # EXTRACTION (multiple strategies) ============
-                const certStrategies = [
-                    // Strategy 1: "CERT.#" or "CERT #" followed by digits
-                    () => { const m = chunk.match(/CERT[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
-                    // Strategy 2: "NO." or "NO #" followed by digits
-                    () => { const m = chunk.match(/NO[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
-                    // Strategy 3: "CERTIFICATE" near a number block
-                    () => { const m = chunk.match(/CERTIFICATE[\s\S]{0,30}?(\d{7,8})/i); return m ? m[1] : null; },
-                    // Strategy 4: "GERT" or "CERI" (OCR misreads of CERT)
-                    () => { const m = chunk.match(/(?:GERT|CERI|CERTI?)[\.\s]*#?\s*(\d{7,8})/i); return m ? m[1] : null; },
-                    // Strategy 5: Standalone 8-digit number (likely cert if other fields found)
-                    () => { const m = chunk.match(/\b(\d{8})\b/); return m ? m[1] : null; },
-                ];
-                for (const strategy of certStrategies) {
-                    const cert = strategy();
-                    if (cert) {
-                        data.cert = cert;
-                        hasData = true;
-                        break;
-                    }
-                }
-
-                // ============ EXPIRATION DATE EXTRACTION (multiple strategies) ============
-                const dateStrategies = [
-                    // Strategy 1: "EXPIRES" keyword
-                    () => { const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i); return m ? m[1] : null; },
-                    // Strategy 2: "EXP" abbreviation
-                    () => { const m = chunk.match(/EXP[\.\s]*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i); return m ? m[1] : null; },
-                    // Strategy 3: Date after ISSUED date (second date = expiration)
-                    () => {
-                        const dates = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g);
-                        // If two dates found, second is typically expiration
-                        if (dates && dates.length >= 2) return dates[1];
-                        return null;
-                    },
-                    // Strategy 4: Any date as last resort
-                    () => { const m = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/); return m ? m[1] : null; },
-                    // Strategy 5: Dates with dashes (MM-DD-YYYY)
-                    () => {
-                        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2})-(\d{1,2})-(\d{2,4})/i);
-                        if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-                        return null;
-                    },
-                ];
-                for (const strategy of dateStrategies) {
-                    const dateStr = strategy();
-                    if (dateStr) {
-                        data.exp = convertToISO(dateStr);
-                        hasData = true;
-                        break;
-                    }
-                }
-
-                // ============ TYPE EXTRACTION (multiple strategies) ============
-                const typeStrategies = [
-                    // Strategy 1: "CAT." or "CAT" followed by F0x
-                    () => { const m = chunk.match(/CAT[\.\s]*F[\s\-]?0?([1-4])/i); return m ? m[1] : null; },
-                    // Strategy 2: Standalone F-0x or F0x
-                    () => { const m = chunk.match(/\bF[\s\-]?0?([1-4])\b/i); return m ? m[1] : null; },
-                    // Strategy 3: "TYPE" keyword near Fitness/Impairment/etc
-                    () => {
-                        if (/TYPE\s*(?:Fitness|Fire\s*Guard)/i.test(chunk)) return '4';
-                        return null;
-                    },
-                    // Strategy 4: Certificate description text
-                    () => {
-                        if (/INDOOR.*OUTDOOR.*ASSEMBLY/i.test(chunk)) return '4'; // F-04
-                        if (/TORCH\s*OPERATION/i.test(chunk)) return '1'; // F-01
-                        if (/SHELTERING/i.test(chunk)) return '2'; // F-02
-                        if (/INDOOR\s*PLACE.*ASSEMBLY/i.test(chunk) && !/OUTDOOR/i.test(chunk)) return '3'; // F-03
-                        return null;
-                    },
-                ];
-                for (const strategy of typeStrategies) {
-                    const typeNum = strategy();
-                    if (typeNum) {
-                        data.type = `F-0${typeNum}`;
-                        hasData = true;
-                        break;
-                    }
-                }
-
-                if (hasData) {
-                    results.push(data);
-                }
-            });
-            return results;
-        };
-
-        // --- [#6] CSV GENERATION with proper escaping ---
-        const generateCSV = () => {
-            const csvRows = [];
-            csvRows.push(["#", "Full Name", "Type", "Certificate #", "Expiration Date", "Status"].join(","));
-
-            sortedGuards.forEach((g, index) => {
-                const status = getStatus(g.exp).label;
-                const row = [
-                    index + 1,
-                    csvEscape(g.name),
-                    csvEscape(g.type),
-                    csvEscape(g.cert),
-                    csvEscape(formatShortDate(g.exp)),
-                    csvEscape(status)
-                ];
-                csvRows.push(row.join(","));
-            });
-
-            const csvString = csvRows.join("\n");
-            const blob = new Blob([csvString], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.setAttribute('hidden', '');
-            a.setAttribute('href', url);
-            const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
-            a.setAttribute('download', `${safeClientName}_${eventDate}_Roster.csv`);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        };
-
-        // --- [#4] PDF GENERATION with Ares branding ---
-        const generatePDF = () => {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const pageWidth = doc.internal.pageSize.getWidth();
-
-            // --- Branded Header ---
-            // Navy bar across top
-            doc.setFillColor(...BRAND.navyRGB);
-            doc.rect(0, 0, pageWidth, 28, 'F');
-
-            // Company name in white
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.text(companyName, pageWidth / 2, 13, { align: "center" });
-
-            // Subtitle
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.text("Fireguard Roster & Compliance Report", pageWidth / 2, 22, { align: "center" });
-
-            // Reset text color
-            doc.setTextColor(0, 0, 0);
-
-            // Blue accent line
-            doc.setDrawColor(...BRAND.blueRGB);
-            doc.setLineWidth(0.8);
-            doc.line(14, 30, pageWidth - 14, 30);
-
-            // Client / Date info
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(11);
-            doc.text(`Client: ${clientName}`, 14, 40);
-            doc.text(`Date: ${formatDisplayDate(eventDate)}`, 14, 47);
-            doc.text(`Total Personnel: ${sortedGuards.length}`, 14, 54);
-
-            // Section header
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(12);
-            doc.setTextColor(...BRAND.navyRGB);
-            doc.text("Personnel Summary", 14, 66);
-            doc.setTextColor(0, 0, 0);
-
-            const tableBody = sortedGuards.map((g, index) => [
-                index + 1,
-                g.name,
-                g.type,
-                g.cert,
-                formatShortDate(g.exp)
-            ]);
-
-            doc.autoTable({
-                startY: 70,
-                head: [['#', 'Full Name', 'Type', 'Certificate #', 'Expiration']],
-                body: tableBody,
-                theme: 'striped',
-                headStyles: {
-                    fillColor: BRAND.navyRGB,
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold',
-                    fontSize: 10
-                },
-                alternateRowStyles: { fillColor: [245, 247, 250] },
-                styles: { fontSize: 10, cellPadding: 4 },
-                columnStyles: { 0: { cellWidth: 15, halign: 'center' } }
-            });
-
-            // Section 2: Scans — always start on a fresh page
+        doc.setTextColor(0, 0, 0);
+        yPos = 22;
+      }
+      const guardLabel = `#${index + 1}: ${guard.name} (${guard.type})`;
+      if (guard.originalImage) {
+        try {
+          const imgProps = doc.getImageProperties(guard.originalImage);
+          const pdfWidth = 150;
+          const pdfHeight = imgProps.height * pdfWidth / imgProps.width;
+          // Check if label + image fit on current page; if not, move everything to next page
+          if (yPos + 5 + pdfHeight > 280) {
             doc.addPage();
             doc.setFillColor(...BRAND.navyRGB);
             doc.rect(0, 0, pageWidth, 12, 'F');
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(8);
-            doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, { align: "center" });
-            doc.setTextColor(0, 0, 0);
-
-            doc.setFontSize(12);
-            doc.setFont("helvetica", "bold");
-            doc.setTextColor(...BRAND.navyRGB);
-            doc.text("Digital Verification (Card Scans)", 14, 24);
-            doc.setTextColor(0, 0, 0);
-
-            let yPos = 34;
-            sortedGuards.forEach((guard, index) => {
-                if (yPos > 250) {
-                    doc.addPage();
-                    // Repeat header bar on new pages
-                    doc.setFillColor(...BRAND.navyRGB);
-                    doc.rect(0, 0, pageWidth, 12, 'F');
-                    doc.setTextColor(255, 255, 255);
-                    doc.setFont("helvetica", "bold");
-                    doc.setFontSize(8);
-                    doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, { align: "center" });
-                    doc.setTextColor(0, 0, 0);
-                    yPos = 22;
-                }
-
-                const guardLabel = `#${index + 1}: ${guard.name} (${guard.type})`;
-
-                if (guard.originalImage) {
-                    try {
-                        const imgProps = doc.getImageProperties(guard.originalImage);
-                        const pdfWidth = 150;
-                        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                        // Check if label + image fit on current page; if not, move everything to next page
-                        if (yPos + 5 + pdfHeight > 280) {
-                             doc.addPage();
-                             doc.setFillColor(...BRAND.navyRGB);
-                             doc.rect(0, 0, pageWidth, 12, 'F');
-                             doc.setTextColor(255, 255, 255);
-                             doc.setFont("helvetica", "bold");
-                             doc.setFontSize(8);
-                             doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, { align: "center" });
-                             doc.setTextColor(0, 0, 0);
-                             yPos = 22;
-                        }
-                        // Print label once, only on the page where the image will actually go
-                        doc.setFontSize(10);
-                        doc.setFont("helvetica", "bold");
-                        doc.text(guardLabel, 14, yPos);
-                        doc.addImage(guard.originalImage, 'JPEG', 14, yPos + 5, pdfWidth, pdfHeight);
-                        yPos += pdfHeight + 20;
-                    } catch (e) {
-                        doc.text("[Image Error]", 14, yPos + 10);
-                        yPos += 30;
-                    }
-                } else {
-                    doc.setFontSize(10);
-                    doc.setFont("helvetica", "bold");
-                    doc.text(guardLabel, 14, yPos);
-                    doc.setFont("helvetica", "italic");
-                    doc.setFontSize(9);
-                    doc.text("[No Digital Verification Image Available]", 14, yPos + 10);
-                    doc.setFont("helvetica", "bold");
-                    yPos += 30;
-                }
+            doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
+              align: "center"
             });
+            doc.setTextColor(0, 0, 0);
+            yPos = 22;
+          }
+          // Print label once, only on the page where the image will actually go
+          doc.setFontSize(10);
+          doc.setFont("helvetica", "bold");
+          doc.text(guardLabel, 14, yPos);
+          doc.addImage(guard.originalImage, 'JPEG', 14, yPos + 5, pdfWidth, pdfHeight);
+          yPos += pdfHeight + 20;
+        } catch (e) {
+          doc.text("[Image Error]", 14, yPos + 10);
+          yPos += 30;
+        }
+      } else {
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "bold");
+        doc.text(guardLabel, 14, yPos);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(9);
+        doc.text("[No Digital Verification Image Available]", 14, yPos + 10);
+        doc.setFont("helvetica", "bold");
+        yPos += 30;
+      }
+    });
 
-            // Footer on last page
-            const lastPageHeight = doc.internal.pageSize.getHeight();
-            doc.setDrawColor(...BRAND.blueRGB);
-            doc.setLineWidth(0.5);
-            doc.line(14, lastPageHeight - 15, pageWidth - 14, lastPageHeight - 15);
-            doc.setFontSize(7);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(120, 120, 120);
-            doc.text(`Generated by ${companyName}  |  ${formatDisplayDate(eventDate)}`, pageWidth / 2, lastPageHeight - 10, { align: "center" });
-
-            const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
-            doc.save(`${safeClientName}_${eventDate}_Roster.pdf`);
-        };
-
-        const updateGuard = (id, field, value) => {
-            setGuards(guards.map(g => g.id === id ? { ...g, [field]: value } : g));
-        };
-
-        const removeGuard = (id) => {
-            setGuards(guards.filter(g => g.id !== id));
-        };
-
-        return (
-            <div className="min-h-screen p-8 max-w-6xl mx-auto">
-
-                <ImageModal src={selectedImage} onClose={() => setSelectedImage(null)} />
-
-                {/* Header */}
-                <div className="flex justify-between items-center mb-8">
-                    <div className="flex-1">
-                         <div className="flex items-center gap-3 mb-1">
-                            <span className="text-white p-2 rounded-lg font-bold text-xl" style={{backgroundColor: BRAND.navy}}>{companyInitials}</span>
-                            <input
-                                type="text"
-                                value={companyName}
-                                onChange={(e) => setCompanyName(e.target.value)}
-                                className="text-3xl font-bold text-gray-900 bg-transparent border-none focus:ring-2 focus:ring-blue-200 rounded px-2 w-full max-w-xl placeholder-gray-300"
-                                placeholder="Enter Company Name"
-                            />
-                        </div>
-                        <p className="text-gray-500 ml-1">Fireguard Roster Automation</p>
-                    </div>
-                    <div className="text-right flex flex-col items-end">
-                        <input
-                            type="text"
-                            value={clientName}
-                            onChange={(e) => setClientName(e.target.value)}
-                            className="block text-right border-none bg-transparent font-semibold text-lg focus:ring-0 mb-1"
-                            placeholder="Client Name"
-                        />
-                         <input
-                            type="date"
-                            value={eventDate}
-                            onChange={(e) => setEventDate(e.target.value)}
-                            className="block text-right border-none bg-transparent text-gray-500 focus:ring-0 text-sm"
-                        />
-                    </div>
-                </div>
-
-                {/* Main Content Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-
-                    {/* Left Panel: Upload */}
-                    <div className="lg:col-span-1 space-y-4">
-                        <div
-                            className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 bg-white'}`}
-                            onDragEnter={handleDrag}
-                            onDragLeave={handleDrag}
-                            onDragOver={handleDrag}
-                            onDrop={handleDrop}
-                            onClick={() => document.getElementById('fileInput').click()}
-                        >
-                            <input
-                                id="fileInput"
-                                type="file"
-                                multiple
-                                accept=".pdf,.jpg,.jpeg,.png"
-                                className="hidden"
-                                onChange={handleFileInput}
-                            />
-                            {isProcessing ? (
-                                <div className="flex flex-col items-center animate-pulse">
-                                    <Loader2 className="h-10 w-10 text-blue-500 animate-spin mb-3" />
-                                    <p className="text-sm font-medium text-gray-600">{progress}</p>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center">
-                                    <div className="bg-blue-100 p-3 rounded-full mb-3">
-                                        <Upload className="h-6 w-6 text-blue-600" />
-                                    </div>
-                                    <p className="font-semibold text-gray-700">Click or Drag files</p>
-                                    <p className="text-xs text-gray-500 mt-1">Supports PDF (Multi-page) or Images</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <button
-                            onClick={handleManualAdd}
-                            className="w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
-                        >
-                            <UserPlus className="h-4 w-4" />
-                            Add Manual Entry
-                        </button>
-
-                        <button
-                             onClick={clearAll}
-                             className="w-full flex items-center justify-center gap-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
-                        >
-                             <RefreshCw className="h-4 w-4" />
-                             Clear / Start Over
-                        </button>
-
-                        {guards.length > 0 && (
-                            <div className="space-y-2 pt-2 border-t border-gray-200">
-                                <button
-                                    onClick={generatePDF}
-                                    className="w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90"
-                                    style={{backgroundColor: BRAND.navy}}
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Generate PDF Report
-                                </button>
-
-                                <button
-                                    onClick={generateCSV}
-                                    className="w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90"
-                                    style={{backgroundColor: BRAND.green}}
-                                >
-                                    <FileSpreadsheet className="h-4 w-4" />
-                                    Export CSV
-                                </button>
-                            </div>
-                        )}
-
-                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs text-yellow-800">
-                            <div className="flex items-center gap-2 mb-1 font-bold">
-                                <AlertTriangle className="h-3 w-3" />
-                                Internal Note:
-                            </div>
-                            <p className="mb-2">Rows highlighted in Red/Yellow are for your eyes only. The final PDF will only show the data without warnings.</p>
-                            <p className="font-semibold text-green-700">&#10003; Metadata auto-saves to browser.</p>
-                            <p className="text-xs text-gray-500 mt-1">(Images not saved in draft to prevent storage errors)</p>
-                        </div>
-                    </div>
-
-                    {/* Right Panel: Data Table */}
-                    <div className="lg:col-span-3">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                                    <FileText className="h-4 w-4" />
-                                    Scanned Personnel ({guards.length})
-                                </h3>
-                                <span className="text-xs text-gray-400">
-                                    Drag rows to reorder &middot; Click headers to sort
-                                </span>
-                            </div>
-
-                            {guards.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400">
-                                    <p>No data yet. Upload files or add manually.</p>
-                                </div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
-                                            <tr>
-                                                <th className="px-2 py-3 w-8"></th>
-                                                <th className="px-2 py-3 w-10 text-center">#</th>
-                                                <th className="px-4 py-3 w-10">Img</th>
-                                                <th className="px-4 py-3" onClick={() => requestSort('name')}>
-                                                    <div className="flex items-center">Full Name <SortIcon colKey="name" /></div>
-                                                </th>
-                                                <th className="px-4 py-3 w-28" onClick={() => requestSort('type')}>
-                                                     <div className="flex items-center">Type <SortIcon colKey="type" /></div>
-                                                </th>
-                                                <th className="px-4 py-3 w-32">Cert #</th>
-                                                <th className="px-4 py-3 w-32" onClick={() => requestSort('exp')}>
-                                                     <div className="flex items-center">Expiration <SortIcon colKey="exp" /></div>
-                                                </th>
-                                                <th className="px-4 py-3 w-32">Internal Status</th>
-                                                <th className="px-4 py-3 w-10"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {sortedGuards.map((guard, index) => {
-                                                const status = getStatus(guard.exp);
-                                                const isDuplicate = guard.cert && duplicateMap[guard.cert] > 1;
-                                                const isLowConfidence = guard.confidence !== undefined && guard.confidence < OCR_CONFIDENCE_THRESHOLD;
-                                                // [#2] Row highlighting
-                                                const rowBg = getRowBgClass(guard.exp);
-                                                const dragClasses = [
-                                                    draggedIndex === index ? 'dragging' : '',
-                                                    dragOverIndex === index && dragOverPosition === 'top' ? 'dragging-over-top' : '',
-                                                    dragOverIndex === index && dragOverPosition === 'bottom' ? 'dragging-over-bottom' : '',
-                                                ].join(' ');
-
-                                                return (
-                                                    <tr
-                                                        key={guard.id}
-                                                        draggable
-                                                        onDragStart={(e) => handleRowDragStart(e, index)}
-                                                        onDragOver={(e) => handleRowDragOver(e, index)}
-                                                        onDragEnd={handleRowDragEnd}
-                                                        onDrop={(e) => handleRowDrop(e, index)}
-                                                        className={`hover:bg-gray-50 group transition-colors drag-row ${rowBg} ${dragClasses} ${isLowConfidence ? 'low-confidence' : ''}`}
-                                                    >
-                                                        {/* [#1] Drag Handle */}
-                                                        <td className="px-2 py-2 text-center">
-                                                            <span className="drag-handle text-gray-400">
-                                                                <GripVertical />
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-2 py-2 text-center font-medium text-gray-500">
-                                                            {index + 1}
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                            <div
-                                                                className="h-8 w-8 rounded overflow-hidden border border-gray-200 bg-gray-100 cursor-zoom-in relative flex items-center justify-center hover:ring-2 ring-blue-400 transition-all"
-                                                                onClick={() => setSelectedImage(guard.originalImage)}
-                                                            >
-                                                                {guard.originalImage ? (
-                                                                    <img src={guard.originalImage} className="h-full w-full object-cover" />
-                                                                ) : (
-                                                                    <span className="text-xs text-gray-400" title="Image not available">--</span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                            <input
-                                                                type="text"
-                                                                value={guard.name}
-                                                                onChange={(e) => updateGuard(guard.id, 'name', e.target.value)}
-                                                                className="w-full bg-transparent border-none p-0 focus:ring-0 font-medium text-gray-900"
-                                                                placeholder="Enter Name"
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                            <select
-                                                                value={guard.type}
-                                                                onChange={(e) => updateGuard(guard.id, 'type', e.target.value)}
-                                                                className="w-full bg-transparent border-none p-0 focus:ring-0 text-gray-600 font-medium cursor-pointer"
-                                                            >
-                                                                <option value="F-01">F-01</option>
-                                                                <option value="F-02">F-02</option>
-                                                                <option value="F-03">F-03</option>
-                                                                <option value="F-04">F-04</option>
-                                                                {!['F-01','F-02','F-03','F-04'].includes(guard.type) && (
-                                                                    <option value={guard.type}>{guard.type}</option>
-                                                                )}
-                                                            </select>
-                                                        </td>
-                                                        <td className="px-4 py-2 font-mono text-xs relative">
-                                                             <input
-                                                                type="text"
-                                                                value={guard.cert}
-                                                                onChange={(e) => updateGuard(guard.id, 'cert', e.target.value)}
-                                                                className={`w-full bg-transparent border-none p-0 focus:ring-0 ${isDuplicate ? 'text-orange-600 font-bold' : 'text-gray-600'}`}
-                                                                placeholder="Cert #"
-                                                            />
-                                                            {isDuplicate && (
-                                                                <span className="absolute right-0 top-1/2 -translate-y-1/2 text-orange-500" title="Duplicate Certificate Number detected">
-                                                                    <AlertTriangle className="h-4 w-4" />
-                                                                </span>
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                             <input
-                                                                type="date"
-                                                                value={guard.exp === 'N/A' ? '' : guard.exp}
-                                                                onChange={(e) => updateGuard(guard.id, 'exp', e.target.value)}
-                                                                className={`w-full bg-transparent border-none p-0 focus:ring-0 cursor-pointer ${status.status === 'expired' ? 'text-red-600 font-bold' : ''}`}
-                                                            />
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                            <div className="flex items-center gap-1">
-                                                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color}`}>
-                                                                    {status.label}
-                                                                </span>
-                                                                {/* [#5] Low OCR confidence badge */}
-                                                                {isLowConfidence && (
-                                                                    <span
-                                                                        className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300 cursor-help"
-                                                                        title={`OCR confidence: ${guard.confidence}%. Review this entry carefully.`}
-                                                                    >
-                                                                        {guard.confidence}%
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-2 text-right">
-                                                            <button
-                                                                onClick={() => removeGuard(guard.id)}
-                                                                className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                            >
-                                                                <XCircle className="h-4 w-4" />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+    // Footer on last page
+    const lastPageHeight = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(...BRAND.blueRGB);
+    doc.setLineWidth(0.5);
+    doc.line(14, lastPageHeight - 15, pageWidth - 14, lastPageHeight - 15);
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Generated by ${companyName}  |  ${formatDisplayDate(eventDate)}`, pageWidth / 2, lastPageHeight - 10, {
+      align: "center"
+    });
+    const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
+    doc.save(`${safeClientName}_${eventDate}_Roster.pdf`);
+  };
+  const updateGuard = (id, field, value) => {
+    setGuards(guards.map(g => g.id === id ? {
+      ...g,
+      [field]: value
+    } : g));
+  };
+  const removeGuard = id => {
+    setGuards(guards.filter(g => g.id !== id));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen p-8 max-w-6xl mx-auto"
+  }, /*#__PURE__*/React.createElement(ImageModal, {
+    src: selectedImage,
+    onClose: () => setSelectedImage(null)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center mb-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 mb-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-white p-2 rounded-lg font-bold text-xl",
+    style: {
+      backgroundColor: BRAND.navy
     }
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+  }, companyInitials), /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: companyName,
+    onChange: e => setCompanyName(e.target.value),
+    className: "text-3xl font-bold text-gray-900 bg-transparent border-none focus:ring-2 focus:ring-blue-200 rounded px-2 w-full max-w-xl placeholder-gray-300",
+    placeholder: "Enter Company Name"
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-gray-500 ml-1"
+  }, "Fireguard Roster Automation")), /*#__PURE__*/React.createElement("div", {
+    className: "text-right flex flex-col items-end"
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "text",
+    value: clientName,
+    onChange: e => setClientName(e.target.value),
+    className: "block text-right border-none bg-transparent font-semibold text-lg focus:ring-0 mb-1",
+    placeholder: "Client Name"
+  }), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: eventDate,
+    onChange: e => setEventDate(e.target.value),
+    className: "block text-right border-none bg-transparent text-gray-500 focus:ring-0 text-sm"
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-1 lg:grid-cols-4 gap-8"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "lg:col-span-1 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 bg-white'}`,
+    onDragEnter: handleDrag,
+    onDragLeave: handleDrag,
+    onDragOver: handleDrag,
+    onDrop: handleDrop,
+    onClick: () => document.getElementById('fileInput').click()
+  }, /*#__PURE__*/React.createElement("input", {
+    id: "fileInput",
+    type: "file",
+    multiple: true,
+    accept: ".pdf,.jpg,.jpeg,.png",
+    className: "hidden",
+    onChange: handleFileInput
+  }), isProcessing ? /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-center animate-pulse"
+  }, /*#__PURE__*/React.createElement(Loader2, {
+    className: "h-10 w-10 text-blue-500 animate-spin mb-3"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-medium text-gray-600"
+  }, progress)) : /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-center"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-blue-100 p-3 rounded-full mb-3"
+  }, /*#__PURE__*/React.createElement(Upload, {
+    className: "h-6 w-6 text-blue-600"
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "font-semibold text-gray-700"
+  }, "Click or Drag files"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-gray-500 mt-1"
+  }, "Supports PDF (Multi-page) or Images"))), /*#__PURE__*/React.createElement("button", {
+    onClick: handleManualAdd,
+    className: "w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
+  }, /*#__PURE__*/React.createElement(UserPlus, {
+    className: "h-4 w-4"
+  }), "Add Manual Entry"), /*#__PURE__*/React.createElement("button", {
+    onClick: clearAll,
+    className: "w-full flex items-center justify-center gap-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
+  }, /*#__PURE__*/React.createElement(RefreshCw, {
+    className: "h-4 w-4"
+  }), "Clear / Start Over"), guards.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2 pt-2 border-t border-gray-200"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: generatePDF,
+    className: "w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90",
+    style: {
+      backgroundColor: BRAND.navy
+    }
+  }, /*#__PURE__*/React.createElement(Download, {
+    className: "h-4 w-4"
+  }), "Generate PDF Report"), /*#__PURE__*/React.createElement("button", {
+    onClick: generateCSV,
+    className: "w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90",
+    style: {
+      backgroundColor: BRAND.green
+    }
+  }, /*#__PURE__*/React.createElement(FileSpreadsheet, {
+    className: "h-4 w-4"
+  }), "Export CSV")), /*#__PURE__*/React.createElement("div", {
+    className: "bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs text-yellow-800"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 mb-1 font-bold"
+  }, /*#__PURE__*/React.createElement(AlertTriangle, {
+    className: "h-3 w-3"
+  }), "Internal Note:"), /*#__PURE__*/React.createElement("p", {
+    className: "mb-2"
+  }, "Rows highlighted in Red/Yellow are for your eyes only. The final PDF will only show the data without warnings."), /*#__PURE__*/React.createElement("p", {
+    className: "font-semibold text-green-700"
+  }, "✓ Metadata auto-saves to browser."), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-gray-500 mt-1"
+  }, "(Images not saved in draft to prevent storage errors)"))), /*#__PURE__*/React.createElement("div", {
+    className: "lg:col-span-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-semibold text-gray-700 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement(FileText, {
+    className: "h-4 w-4"
+  }), "Scanned Personnel (", guards.length, ")"), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-gray-400"
+  }, "Drag rows to reorder · Click headers to sort")), guards.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "p-12 text-center text-gray-400"
+  }, /*#__PURE__*/React.createElement("p", null, "No data yet. Upload files or add manually.")) : /*#__PURE__*/React.createElement("div", {
+    className: "overflow-x-auto"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "w-full text-sm text-left"
+  }, /*#__PURE__*/React.createElement("thead", {
+    className: "bg-gray-50 text-gray-500 font-medium border-b border-gray-200"
+  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+    className: "px-2 py-3 w-8"
+  }), /*#__PURE__*/React.createElement("th", {
+    className: "px-2 py-3 w-10 text-center"
+  }, "#"), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-10"
+  }, "Img"), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3",
+    onClick: () => requestSort('name')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center"
+  }, "Full Name ", /*#__PURE__*/React.createElement(SortIcon, {
+    colKey: "name"
+  }))), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-28",
+    onClick: () => requestSort('type')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center"
+  }, "Type ", /*#__PURE__*/React.createElement(SortIcon, {
+    colKey: "type"
+  }))), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-32"
+  }, "Cert #"), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-32",
+    onClick: () => requestSort('exp')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center"
+  }, "Expiration ", /*#__PURE__*/React.createElement(SortIcon, {
+    colKey: "exp"
+  }))), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-32"
+  }, "Internal Status"), /*#__PURE__*/React.createElement("th", {
+    className: "px-4 py-3 w-10"
+  }))), /*#__PURE__*/React.createElement("tbody", {
+    className: "divide-y divide-gray-100"
+  }, sortedGuards.map((guard, index) => {
+    const status = getStatus(guard.exp);
+    const isDuplicate = guard.cert && duplicateMap[guard.cert] > 1;
+    const isLowConfidence = guard.confidence !== undefined && guard.confidence < OCR_CONFIDENCE_THRESHOLD;
+    // [#2] Row highlighting
+    const rowBg = getRowBgClass(guard.exp);
+    const dragClasses = [draggedIndex === index ? 'dragging' : '', dragOverIndex === index && dragOverPosition === 'top' ? 'dragging-over-top' : '', dragOverIndex === index && dragOverPosition === 'bottom' ? 'dragging-over-bottom' : ''].join(' ');
+    return /*#__PURE__*/React.createElement("tr", {
+      key: guard.id,
+      draggable: true,
+      onDragStart: e => handleRowDragStart(e, index),
+      onDragOver: e => handleRowDragOver(e, index),
+      onDragEnd: handleRowDragEnd,
+      onDrop: e => handleRowDrop(e, index),
+      className: `hover:bg-gray-50 group transition-colors drag-row ${rowBg} ${dragClasses} ${isLowConfidence ? 'low-confidence' : ''}`
+    }, /*#__PURE__*/React.createElement("td", {
+      className: "px-2 py-2 text-center"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "drag-handle text-gray-400"
+    }, /*#__PURE__*/React.createElement(GripVertical, null))), /*#__PURE__*/React.createElement("td", {
+      className: "px-2 py-2 text-center font-medium text-gray-500"
+    }, index + 1), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "h-8 w-8 rounded overflow-hidden border border-gray-200 bg-gray-100 cursor-zoom-in relative flex items-center justify-center hover:ring-2 ring-blue-400 transition-all",
+      onClick: () => setSelectedImage(guard.originalImage)
+    }, guard.originalImage ? /*#__PURE__*/React.createElement("img", {
+      src: guard.originalImage,
+      className: "h-full w-full object-cover"
+    }) : /*#__PURE__*/React.createElement("span", {
+      className: "text-xs text-gray-400",
+      title: "Image not available"
+    }, "--"))), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2"
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: guard.name,
+      onChange: e => updateGuard(guard.id, 'name', e.target.value),
+      className: "w-full bg-transparent border-none p-0 focus:ring-0 font-medium text-gray-900",
+      placeholder: "Enter Name"
+    })), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2"
+    }, /*#__PURE__*/React.createElement("select", {
+      value: guard.type,
+      onChange: e => updateGuard(guard.id, 'type', e.target.value),
+      className: "w-full bg-transparent border-none p-0 focus:ring-0 text-gray-600 font-medium cursor-pointer"
+    }, /*#__PURE__*/React.createElement("option", {
+      value: "F-01"
+    }, "F-01"), /*#__PURE__*/React.createElement("option", {
+      value: "F-02"
+    }, "F-02"), /*#__PURE__*/React.createElement("option", {
+      value: "F-03"
+    }, "F-03"), /*#__PURE__*/React.createElement("option", {
+      value: "F-04"
+    }, "F-04"), !['F-01', 'F-02', 'F-03', 'F-04'].includes(guard.type) && /*#__PURE__*/React.createElement("option", {
+      value: guard.type
+    }, guard.type))), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2 font-mono text-xs relative"
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      value: guard.cert,
+      onChange: e => updateGuard(guard.id, 'cert', e.target.value),
+      className: `w-full bg-transparent border-none p-0 focus:ring-0 ${isDuplicate ? 'text-orange-600 font-bold' : 'text-gray-600'}`,
+      placeholder: "Cert #"
+    }), isDuplicate && /*#__PURE__*/React.createElement("span", {
+      className: "absolute right-0 top-1/2 -translate-y-1/2 text-orange-500",
+      title: "Duplicate Certificate Number detected"
+    }, /*#__PURE__*/React.createElement(AlertTriangle, {
+      className: "h-4 w-4"
+    }))), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2"
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "date",
+      value: guard.exp === 'N/A' ? '' : guard.exp,
+      onChange: e => updateGuard(guard.id, 'exp', e.target.value),
+      className: `w-full bg-transparent border-none p-0 focus:ring-0 cursor-pointer ${status.status === 'expired' ? 'text-red-600 font-bold' : ''}`
+    })), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color}`
+    }, status.label), isLowConfidence && /*#__PURE__*/React.createElement("span", {
+      className: "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300 cursor-help",
+      title: `OCR confidence: ${guard.confidence}%. Review this entry carefully.`
+    }, guard.confidence, "%"))), /*#__PURE__*/React.createElement("td", {
+      className: "px-4 py-2 text-right"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => removeGuard(guard.id),
+      className: "text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+    }, /*#__PURE__*/React.createElement(XCircle, {
+      className: "h-4 w-4"
+    }))));
+  }))))))));
+}
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(/*#__PURE__*/React.createElement(App, null));
 </script>
 </body>
 </html>
