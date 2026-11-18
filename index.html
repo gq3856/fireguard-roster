@@ -1,1524 +1,1858 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fireguard Roster Generator</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fire Guard Roster | Ares Security</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js" defer></script>
+<style>
+:root{
+  --ink:#121E3A; --indigo:#3B4B8F; --indigo-soft:#E8EBF7; --body:#495268; --muted:#8B93A5; --faint:#AFBBD6;
+  --panel:#F7F8FB; --line:#D5D9E3; --soft:#E8EAF0; --ground:#EEF0F5; --white:#fff;
+  --green:#2E7D5B; --green-soft:#E3F3EB; --amber:#B8860B; --amber-soft:#FFF4D6; --red:#B03A2E; --red-soft:#FBE9E6;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Manrope',system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;background:var(--ground);color:var(--body);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 24px 64px}
 
-    <!-- React & Tailwind -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
+/* header */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;padding-bottom:16px;border-bottom:3px solid var(--ink);margin-bottom:22px;flex-wrap:wrap}
+.brand{font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--indigo);text-transform:uppercase}
+h1{margin:4px 0 0;font-size:34px;line-height:1.08;font-weight:800;color:var(--ink);letter-spacing:-.02em}
+h1 em{font-style:normal;color:var(--indigo)}
+.top .sub{font-size:13px;color:var(--muted);font-weight:500;max-width:330px;text-align:right}
 
-    <!-- PDF & OCR Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <style>
-        body { background-color: #f3f4f6; font-family: 'Inter', sans-serif; }
-        .drag-active { border-color: #2563eb; background-color: #eff6ff; }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .sort-icon { display: inline-block; margin-left: 4px; opacity: 0.5; }
-        .sort-active { opacity: 1; color: #2563eb; }
-        th { cursor: pointer; user-select: none; }
-        th:hover { background-color: #f9fafb; }
-        .modal-overlay { background-color: rgba(0, 0, 0, 0.75); }
+/* job panels */
+.job{display:grid;grid-template-columns:1.3fr 1fr 1.3fr;gap:14px;margin-bottom:18px}
+.field{background:var(--white);border-radius:12px;border-left:5px solid var(--ink);padding:11px 14px 10px}
+.field label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.field input{width:100%;border:0;outline:0;background:transparent;font-weight:700;font-size:16px;color:var(--ink);padding:3px 0 0}
+.field input::placeholder{color:var(--faint);font-weight:600}
 
-        /* Drag-and-drop row styles */
-        .drag-row { cursor: grab; }
-        .drag-row:active { cursor: grabbing; }
-        .drag-handle { cursor: grab; opacity: 0.3; transition: opacity 0.15s; }
-        .drag-handle:hover { opacity: 1; }
-        tr.dragging-over-top { box-shadow: inset 0 2px 0 0 #2563eb; }
-        tr.dragging-over-bottom { box-shadow: inset 0 -2px 0 0 #2563eb; }
-        tr.dragging { opacity: 0.4; }
+/* cards */
+.card{background:var(--white);border-radius:var(--r);padding:20px 22px;margin-bottom:18px}
+.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--indigo);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.eyebrow .n{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;align-items:center;justify-content:center;font-size:11px;letter-spacing:0}
 
-        /* Low confidence pulse */
-        .low-confidence {
-            animation: pulse-amber 2s ease-in-out infinite;
-        }
-        @keyframes pulse-amber {
-            0%, 100% { background-color: transparent; }
-            50% { background-color: rgba(245, 158, 11, 0.1); }
-        }
-    </style>
+/* drop zone */
+.drop{border:2px dashed var(--line);border-radius:var(--r);background:var(--panel);padding:30px 20px;text-align:center;transition:border-color .15s, background .15s;cursor:pointer}
+.drop.over{border-color:var(--indigo);background:var(--indigo-soft)}
+.drop h2{margin:0 0 6px;font-size:20px;font-weight:800;color:var(--ink)}
+.drop p{margin:0 auto;max-width:560px;color:var(--body);font-weight:500;font-size:14px}
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.btn{border:0;border-radius:999px;padding:11px 20px;font-weight:700;font-size:14px;background:var(--ink);color:#fff;display:inline-flex;align-items:center;gap:8px;transition:transform .05s, opacity .15s}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:var(--white);color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn.ghost:hover{box-shadow:inset 0 0 0 1.5px var(--indigo)}
+.btn.indigo{background:var(--indigo)}
+.btn.small{padding:7px 14px;font-size:13px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.danger{background:var(--red)}
+.only-touch{display:none}
+@media (pointer:coarse){.only-touch{display:inline-flex}}
+
+/* photo progress strip */
+.photos{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.photo{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:12px;padding:8px 12px 8px 8px;min-width:230px;max-width:100%;border-left:4px solid var(--faint)}
+.photo .th{width:44px;height:44px;border-radius:8px;background:var(--soft) center/cover no-repeat;flex:none}
+.photo .nm{font-weight:700;color:var(--ink);font-size:13px;max-width:210px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.photo .st{font-size:12px;font-weight:600;color:var(--muted)}
+.photo.reading{border-left-color:var(--indigo)} .photo.reading .st{color:var(--indigo)}
+.photo.done{border-left-color:var(--green)} .photo.done .st{color:var(--green)}
+.photo.none,.photo.error{border-left-color:var(--red)} .photo.none .st,.photo.error .st{color:var(--red)}
+.photo .x{margin-left:auto;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px}
+.bar{height:6px;border-radius:99px;background:var(--soft);overflow:hidden;margin-top:14px}
+.bar i{display:block;height:100%;background:var(--indigo);border-radius:99px;transition:width .3s}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--indigo-soft);border-top-color:var(--indigo);animation:sp .8s linear infinite;display:inline-block;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* roster */
+.rhead{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.summary{font-size:14px;font-weight:600;color:var(--body)}
+.summary b{color:var(--ink);font-weight:800}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:0;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;background:var(--panel);color:var(--body)}
+.chip.on{background:var(--ink);color:#fff}
+.chip .c{opacity:.7;margin-left:4px}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;user-select:none}
+thead th.sortable{cursor:pointer}
+thead th.sortable:hover{color:var(--ink)}
+tbody td{padding:9px 10px;border-bottom:1px solid var(--soft);vertical-align:middle}
+tbody tr.flag td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
+tbody tr.ok td:first-child{box-shadow:inset 4px 0 0 var(--green)}
+tbody tr.dragging{opacity:.4}
+tbody tr.dropabove td{box-shadow:inset 0 2px 0 var(--indigo)}
+.num{color:var(--faint);font-weight:800;font-variant-numeric:tabular-nums;width:34px;cursor:grab}
+.thumb{width:74px;height:47px;border-radius:7px;background:var(--soft) center/cover no-repeat;border:1px solid var(--line);cursor:zoom-in;display:block}
+.thumb.empty{cursor:default;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);font-weight:700}
+td input,td select{width:100%;border:0;outline:0;background:transparent;border-radius:8px;padding:6px 8px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+td input:focus,td select:focus{background:var(--panel);box-shadow:inset 0 0 0 1.5px var(--indigo)}
+td.check input,td.check select{background:var(--amber-soft);box-shadow:inset 0 0 0 1.5px #E9C766}
+td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:160px}
+.pill{display:inline-block;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.pill.g{background:var(--green-soft);color:var(--green)} .pill.a{background:var(--amber-soft);color:var(--amber)} .pill.r{background:var(--red-soft);color:var(--red)} .pill.n{background:var(--panel);color:var(--muted)}
+.rowbtn{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;padding:6px 8px;border-radius:8px}
+.rowbtn:hover{background:var(--panel);color:var(--ink)}
+.rowbtn.review{color:var(--amber)}
+.empty-roster{padding:34px 10px;text-align:center;color:var(--muted);font-weight:600}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:16px}
+.note{font-size:12.5px;color:var(--muted);font-weight:500}
+.banner{border-radius:12px;padding:12px 16px;font-weight:600;font-size:14px;margin-bottom:14px;display:none}
+.banner.show{display:block}
+.banner.err{background:var(--red-soft);color:var(--red)}
+.banner.warn{background:var(--amber-soft);color:#7a5a05}
+.confirm{display:none;align-items:center;gap:10px;background:var(--red-soft);border-radius:12px;padding:10px 14px;font-weight:700;color:var(--red);margin-top:12px;flex-wrap:wrap}
+.confirm.show{display:flex}
+
+/* export */
+.export{background:var(--ink);color:#fff;border-radius:var(--r);padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.export .eyebrow{color:#9FB0E8;margin-bottom:4px}
+.export .eyebrow .n{background:#fff;color:var(--ink)}
+.export h3{margin:0;font-size:19px;font-weight:800}
+.export p{margin:2px 0 0;color:#B9C3E6;font-size:13px;font-weight:500}
+.export .btn{background:#fff;color:var(--ink)}
+.export .btn.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px #5b6aa8}
+.foot{margin-top:20px;font-size:12px;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:2px solid var(--ink);padding-top:12px}
+
+/* review dialog */
+.modal{position:fixed;inset:0;background:rgba(18,30,58,.72);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}
+.modal.show{display:flex}
+.sheet{background:#fff;border-radius:18px;max-width:1040px;width:100%;max-height:94vh;overflow:auto;display:grid;grid-template-columns:1.25fr 1fr}
+.sheet .pic{background:var(--panel);padding:18px;display:flex;align-items:center;justify-content:center;border-radius:18px 0 0 18px}
+.sheet .pic img{max-width:100%;max-height:70vh;border-radius:12px;box-shadow:0 6px 24px rgba(18,30,58,.18)}
+.sheet .pic .nopic{color:var(--muted);font-weight:700}
+.sheet .form{padding:22px 24px}
+.sheet h4{margin:0 0 2px;font-size:20px;font-weight:800;color:var(--ink)}
+.sheet .hint{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:14px}
+.f2{margin-bottom:12px}
+.f2 label{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.f2 label span{color:var(--amber);letter-spacing:.04em}
+.f2 input,.f2 select{width:100%;border:0;border-radius:10px;background:var(--panel);padding:11px 12px;font-weight:700;font-size:16px;color:var(--ink);outline:0;box-shadow:inset 0 0 0 1.5px var(--soft)}
+.f2.check input,.f2.check select{background:var(--amber-soft);box-shadow:inset 0 0 0 1.5px #E9C766}
+.f2 input:focus,.f2 select:focus{box-shadow:inset 0 0 0 2px var(--indigo)}
+.mrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.mrow .sp{flex:1}
+.count{font-size:12.5px;font-weight:700;color:var(--muted)}
+
+@media (max-width:860px){
+  .wrap{padding:18px 14px 48px}
+  h1{font-size:27px}
+  .top .sub{text-align:left;max-width:none}
+  .job{grid-template-columns:1fr}
+  .sheet{grid-template-columns:1fr}
+  .sheet .pic{border-radius:18px 18px 0 0}
+  thead{display:none}
+  table,tbody,tr,td{display:block;width:100%}
+  tbody tr{border:1px solid var(--soft);border-radius:12px;margin-bottom:10px;padding:8px 8px 8px 12px;position:relative}
+  tbody tr.flag{border-left:4px solid var(--amber)} tbody tr.ok{border-left:4px solid var(--green)}
+  tbody tr.flag td:first-child,tbody tr.ok td:first-child{box-shadow:none}
+  tbody td{border:0;padding:3px 0}
+  td.num{display:none}
+  td.name,td.type,td.cert,td.exp{width:auto;min-width:0}
+  td[data-l]::before{content:attr(data-l);display:block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-left:8px}
+  .thumb{width:118px;height:75px}
+}
+@media print{.card.add,.export,.actions,.chips,.rowbtn{display:none}}
+</style>
 </head>
 <body>
-<div id="root"></div>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="brand" id="brandLine">Ares Security</div>
+      <h1>Fire Guard <em>Roster</em></h1>
+    </div>
+    <div class="sub">Add photos of the FDNY cards. The roster builds itself. Check anything marked in yellow, then download.</div>
+  </div>
+
+  <div class="banner err" id="errBanner"></div>
+
+  <div class="job">
+    <div class="field"><label for="client">Client or event</label><input id="client" placeholder="Who is this roster for?" autocomplete="off"></div>
+    <div class="field"><label for="date">Event date</label><input id="date" type="date"></div>
+    <div class="field"><label for="company">Prepared by</label><input id="company" autocomplete="off"></div>
+  </div>
+
+  <div class="card add">
+    <div class="eyebrow"><span class="n">1</span> Add the cards</div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add card photos">
+      <h2>Add card photos</h2>
+      <p>Drop them here or choose them. Phone photos, iPhone HEIC, screenshots and PDFs all work. Sideways is fine. Two or three cards in one photo is fine.</p>
+      <div class="btns">
+        <button class="btn" id="pick" type="button">Choose photos</button>
+        <button class="btn indigo only-touch" id="snap" type="button">Take a photo</button>
+        <button class="btn ghost" id="manual" type="button">Add a guard by hand</button>
+      </div>
+    </div>
+    <input id="file" type="file" multiple accept="image/*,.heic,.heif,.pdf,application/pdf" hidden>
+    <input id="cam" type="file" accept="image/*" capture="environment" hidden>
+    <div id="progress"></div>
+  </div>
+
+  <div class="card">
+    <div class="eyebrow"><span class="n">2</span> Check the roster</div>
+    <div class="banner warn" id="checkBanner"></div>
+    <div class="rhead">
+      <div class="summary" id="summary"></div>
+      <div class="chips" id="chips"></div>
+    </div>
+    <div id="roster"></div>
+    <div class="actions">
+      <span class="note">Yellow means the scanner was not certain. Tap the card picture to compare and confirm.</span>
+      <button class="btn ghost small" id="clear" type="button">Start over</button>
+    </div>
+    <div class="confirm" id="clearConfirm">
+      <span>Remove every guard and photo from this roster?</span>
+      <button class="btn danger small" id="clearYes" type="button">Yes, start over</button>
+      <button class="btn ghost small" id="clearNo" type="button">Keep it</button>
+    </div>
+  </div>
+
+  <div class="export">
+    <div>
+      <div class="eyebrow"><span class="n">3</span> Download</div>
+      <h3 id="exportTitle">Roster for your client</h3>
+      <p id="exportSub">PDF with the roster and a copy of every card, or a spreadsheet.</p>
+    </div>
+    <div class="btns" style="margin:0">
+      <button class="btn" id="pdf" type="button">Download PDF</button>
+      <button class="btn ghost" id="csv" type="button">Spreadsheet (CSV)</button>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Card photos are read on this device and are not uploaded anywhere.</span>
+    <span id="ver">Scanner v3</span>
+  </div>
+</div>
+
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="pic" id="mPic"></div>
+    <div class="form">
+      <h4 id="mTitle">Check this card</h4>
+      <div class="hint" id="mHint"></div>
+      <div class="f2" data-f="name"><label>Full name <span></span></label><input id="mName" autocomplete="off"></div>
+      <div class="f2" data-f="type"><label>Type <span></span></label>
+        <select id="mType"><option value="">Choose</option><option>F-01</option><option>F-02</option><option>F-03</option><option>F-04</option></select></div>
+      <div class="f2" data-f="cert"><label>Certificate number <span></span></label><input id="mCert" inputmode="numeric" autocomplete="off"></div>
+      <div class="f2" data-f="exp"><label>Expires <span></span></label><input id="mExp" type="date"></div>
+      <div class="mrow">
+        <button class="btn" id="mOk" type="button">Looks right</button>
+        <button class="btn ghost" id="mClose" type="button">Close</button>
+        <span class="sp"></span>
+        <button class="rowbtn" id="mRemove" type="button">Remove guard</button>
+      </div>
+      <div class="mrow"><span class="count" id="mCount"></span><span class="sp"></span>
+        <button class="btn ghost small" id="mPrev" type="button">Previous</button>
+        <button class="btn ghost small" id="mNext" type="button">Next</button></div>
+    </div>
+  </div>
+</div>
+
 <script>
-// --- CONFIGURATION ---
-const DEFAULT_COMPANY_NAME = "Ares Security Consulting";
-const PDF_WORKER_SRC = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-const STORAGE_KEY = "ares_roster_data_v1";
-const SETTINGS_KEY = "ares_app_settings_v1";
-const OCR_CONFIDENCE_THRESHOLD = 70; // Below this = low confidence warning
-const {
-  useState,
-  useEffect,
-  useMemo,
-  useRef,
-  useCallback
-} = React;
+/* ==========================================================================
+   Fire Guard card scanner v3  (Ares Security)
+   Reads FDNY Certificate of Fitness cards out of ordinary phone photos.
 
-// Brand Colors
-const BRAND = {
-  navy: '#1B2A4A',
-  blue: '#0072CE',
-  green: '#27AE60',
-  orange: '#E67E22',
-  navyRGB: [27, 42, 74],
-  blueRGB: [0, 114, 206]
-};
-pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
+   What changed from v2, and why (measured on 27 real guard photos):
+     - v2 read the whole photo as one block of text. A sideways card, two cards
+       in one photo, or a card that was a small part of the picture came back
+       blank or, worse, wrong.
+     - v3 first FINDS each card (any rotation, several per photo) by matching
+       the card's printed labels to a layout template, straightens and crops it,
+       and then reads each field from its own strip of the card.
+     - Every field is read several independent ways and only shown as verified
+       when the reads agree.
+   No DOM framework needed. Depends only on Tesseract.js (window.Tesseract).
+   ========================================================================== */
+(function (global) {
+  'use strict';
 
-// --- ICONS ---
-const Upload = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-}), /*#__PURE__*/React.createElement("polyline", {
-  points: "17 8 12 3 7 8"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "12",
-  y1: "3",
-  x2: "12",
-  y2: "15"
-}));
-const FileText = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
-}), /*#__PURE__*/React.createElement("polyline", {
-  points: "14 2 14 8 20 8"
-}));
-const AlertTriangle = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "12",
-  y1: "9",
-  x2: "12",
-  y2: "13"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "12",
-  y1: "17",
-  x2: "12.01",
-  y2: "17"
-}));
-const XCircle = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("circle", {
-  cx: "12",
-  cy: "12",
-  r: "10"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "15",
-  y1: "9",
-  x2: "9",
-  y2: "15"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "9",
-  y1: "9",
-  x2: "15",
-  y2: "15"
-}));
-const Download = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
-}), /*#__PURE__*/React.createElement("polyline", {
-  points: "7 10 12 15 17 10"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "12",
-  y1: "15",
-  x2: "12",
-  y2: "3"
-}));
-const FileSpreadsheet = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"
-}), /*#__PURE__*/React.createElement("polyline", {
-  points: "14 2 14 8 20 8"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M8 13h2"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M8 17h2"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M14 13h2"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M14 17h2"
-}));
-const Loader2 = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M21 12a9 9 0 1 1-6.219-8.56"
-}));
-const UserPlus = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "8.5",
-  cy: "7",
-  r: "4"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "20",
-  y1: "8",
-  x2: "20",
-  y2: "14"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "23",
-  y1: "11",
-  x2: "17",
-  y2: "11"
-}));
-const RefreshCw = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("path", {
-  d: "M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M21 3v5h-5"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
-}), /*#__PURE__*/React.createElement("path", {
-  d: "M3 21v-5h5"
-}));
-const ChevronUp = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "16",
-  height: "16",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("polyline", {
-  points: "18 15 12 9 6 15"
-}));
-const ChevronDown = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "16",
-  height: "16",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("polyline", {
-  points: "6 9 12 15 18 9"
-}));
-const CloseIcon = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "24",
-  height: "24",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("line", {
-  x1: "18",
-  y1: "6",
-  x2: "6",
-  y2: "18"
-}), /*#__PURE__*/React.createElement("line", {
-  x1: "6",
-  y1: "6",
-  x2: "18",
-  y2: "18"
-}));
-const GripVertical = props => /*#__PURE__*/React.createElement("svg", {
-  xmlns: "http://www.w3.org/2000/svg",
-  width: "16",
-  height: "16",
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: "2",
-  strokeLinecap: "round",
-  strokeLinejoin: "round",
-  ...props
-}, /*#__PURE__*/React.createElement("circle", {
-  cx: "9",
-  cy: "5",
-  r: "1"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "15",
-  cy: "5",
-  r: "1"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "9",
-  cy: "12",
-  r: "1"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "15",
-  cy: "12",
-  r: "1"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "9",
-  cy: "19",
-  r: "1"
-}), /*#__PURE__*/React.createElement("circle", {
-  cx: "15",
-  cy: "19",
-  r: "1"
-}));
+  // ---- Card layout template ------------------------------------------------
+  // Units: the header line "CERTIFICATE ISSUED BY FDNY" is the ruler.
+  //   u = 0 at the left edge of "CERTIFICATE", u = 1 at the right edge of the
+  //   header's "FDNY"; v = 0 on the header baseline, positive going down.
+  // [text, u0, u1, vCenter, weight]
+  const TPL = [
+    ['CERTIFICATE', 0.000, 0.430, -0.045, 3],
+    ['ISSUED', 0.455, 0.690, -0.045, 1],
+    ['FDNY', 0.825, 1.000, -0.045, 1],
+    ['CERT', -0.180, -0.014, 0.082, 2],
+    ['ISSUED', -0.178, -0.010, 0.137, 1],
+    ['EXPIRES', 0.305, 0.505, 0.137, 3],
+    ['NAME', -0.180, -0.050, 0.206, 2],
+    ['HOME', -0.180, -0.045, 0.265, 2],
+    ['ADDR', -0.185, -0.050, 0.322, 2],
+    ['FDNY', 0.600, 0.780, 0.322, 1],
+    ['EMPLOYEE', 0.410, 0.780, 0.398, 2],
+    ['FEE', -0.185, -0.095, 0.485, 1],
+    ['TYPE', 0.350, 0.475, 0.482, 1],
+    ['FITNESS', 0.490, 0.650, 0.482, 2],
+    ['DESC', -0.190, -0.045, 0.545, 2],
+    ['EMPLOYER', -0.190, 0.070, 0.600, 3],
+    ['WORK', -0.190, -0.035, 0.660, 2],
+    ['LOCATION', -0.190, 0.050, 0.720, 3],
+    ['MUST', 0.290, 0.400, 0.785, 1],
+    ['HAVE', 0.420, 0.530, 0.785, 1],
+    ['VALID', 0.547, 0.660, 0.785, 1],
+    ['FDNY', 0.675, 0.810, 0.785, 1],
+    ['SEAL', 0.825, 0.920, 0.785, 1]
+  ];
+  // Card outline in the same units (with a little margin)
+  const CARD = { u0: -0.245, u1: 1.235, v0: -0.135, v1: 0.865 };
+  const PX_PER_U = 1000;               // resolution of the straightened card
+  const LOCATE_LONG_SIDE = 2000;       // working size for the find-the-card pass
+  const MAX_SOURCE_SIDE = 3400;        // cap on the decoded photo
 
-// --- HELPER FUNCTIONS ---
-const parseDate = dateStr => {
-  if (!dateStr || dateStr === "N/A") return null;
-  if (dateStr.includes('-')) {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) return new Date(parts[0], parts[1] - 1, parts[2]);
-  }
-  const parts = dateStr.split('/');
-  if (parts.length === 3) return new Date(parts[2], parts[0] - 1, parts[1]);
-  return null;
-};
-const getStatus = expDateStr => {
-  const expDate = parseDate(expDateStr);
-  if (!expDate) return {
-    status: 'unknown',
-    label: 'Check Date',
-    color: 'text-gray-500 bg-gray-100'
+  // ---- small helpers -------------------------------------------------------
+  const makeCanvas = (w, h) => {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(w));
+    c.height = Math.max(1, Math.round(h));
+    return c;
   };
-  const today = new Date();
-  const diffTime = expDate - today;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  if (diffDays < 0) return {
-    status: 'expired',
-    label: 'EXPIRED',
-    color: 'text-red-700 bg-red-100 border border-red-200'
-  };
-  if (diffDays < 30) return {
-    status: 'warning',
-    label: `Expires in ${diffDays}d`,
-    color: 'text-amber-700 bg-amber-100 border border-amber-200'
-  };
-  return {
-    status: 'ok',
-    label: 'Active',
-    color: 'text-green-700 bg-green-100 border border-green-200'
-  };
-};
+  const freeCanvas = c => { if (c) { c.width = 0; c.height = 0; } };
 
-// [#2] Row background color for internal view only
-const getRowBgClass = expDateStr => {
-  const status = getStatus(expDateStr).status;
-  if (status === 'expired') return 'bg-red-50';
-  if (status === 'warning') return 'bg-amber-50';
-  return '';
-};
-const formatDisplayDate = isoDate => {
-  if (!isoDate) return "";
-  const [year, month, day] = isoDate.split('-');
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric'
-  });
-};
-const formatShortDate = isoDate => {
-  if (!isoDate || isoDate === "N/A") return isoDate;
-  if (!isoDate.includes('-')) return isoDate;
-  const [year, month, day] = isoDate.split('-');
-  return `${month}/${day}/${year}`;
-};
-const readFileAsArrayBuffer = file => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsArrayBuffer(file);
-  });
-};
+  const norm = s => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-// [#6] Proper CSV escaping - handles double quotes inside values
-const csvEscape = val => {
-  const str = String(val);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return '"' + str.replace(/"/g, '""') + '"';
-  }
-  return str;
-};
-
-// --- MODAL COMPONENT ---
-const ImageModal = ({
-  src,
-  onClose
-}) => {
-  if (!src) return null;
-  return /*#__PURE__*/React.createElement("div", {
-    className: "fixed inset-0 z-50 flex items-center justify-center modal-overlay p-4",
-    onClick: onClose
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-2xl p-2 flex flex-col",
-    onClick: e => e.stopPropagation()
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-end mb-2"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: onClose,
-    className: "p-1 hover:bg-gray-100 rounded-full text-gray-500 hover:text-red-500 transition-colors"
-  }, /*#__PURE__*/React.createElement(CloseIcon, {
-    className: "w-6 h-6"
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "overflow-auto flex-1 flex items-center justify-center bg-gray-100 rounded border"
-  }, /*#__PURE__*/React.createElement("img", {
-    src: src,
-    className: "max-w-full max-h-[80vh] object-contain"
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "mt-2 text-center text-sm text-gray-500"
-  }, "Scroll or use browser zoom to inspect details")));
-};
-
-// --- MAIN COMPONENT ---
-function App() {
-  const [companyName, setCompanyName] = useState(() => {
-    const savedSettings = localStorage.getItem(SETTINGS_KEY);
-    return savedSettings ? JSON.parse(savedSettings).companyName : DEFAULT_COMPANY_NAME;
-  });
-  const companyInitials = useMemo(() => {
-    if (!companyName) return "AS";
-    const words = companyName.trim().split(/\s+/);
-    if (words.length === 0) return "AS";
-    if (words.length === 1) return words[0].substring(0, 2).toUpperCase();
-    return (words[0][0] + words[1][0]).toUpperCase();
-  }, [companyName]);
-  const [guards, setGuards] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState("");
-  const [dragActive, setDragActive] = useState(false);
-  const [clientName, setClientName] = useState("Client Name");
-  const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedImage, setSelectedImage] = useState(null);
-
-  // Sorting State
-  const [sortConfig, setSortConfig] = useState({
-    key: null,
-    direction: 'ascending'
-  });
-
-  // [#1] Drag-and-drop reorder state
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [dragOverPosition, setDragOverPosition] = useState(null); // 'top' or 'bottom'
-
-  // Effect: Save Guards
-  useEffect(() => {
-    try {
-      const storageGuards = guards.map(({
-        originalImage,
-        ...rest
-      }) => rest);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(storageGuards));
-    } catch (error) {
-      console.warn("Could not save draft to LocalStorage (Quota Exceeded):", error);
+  const editDistance = (a, b) => {
+    if (a === b) return 0;
+    const m = a.length, n = b.length;
+    if (Math.abs(m - n) > 2) return 3;
+    let prev = new Array(n + 1), cur = new Array(n + 1);
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (let j = 1; j <= n; j++) {
+        cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      }
+      const t = prev; prev = cur; cur = t;
     }
-  }, [guards]);
-
-  // Effect: Save Settings
-  useEffect(() => {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-        companyName
-      }));
-    } catch (error) {
-      console.warn("Could not save settings:", error);
+    return prev[n];
+  };
+  const editDistanceFull = (a, b) => {
+    const m = a.length, n = b.length;
+    let prev = new Array(n + 1), cur = new Array(n + 1);
+    for (let j = 0; j <= n; j++) prev[j] = j;
+    for (let i = 1; i <= m; i++) {
+      cur[0] = i;
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      const t = prev; prev = cur; cur = t;
     }
-  }, [companyName]);
+    return prev[n];
+  };
+  // Does an OCR word look like this label?
+  const labelMatch = (wordNorm, label) => {
+    if (!wordNorm) return false;
+    if (wordNorm === label) return true;
+    if (label.length >= 7) return editDistance(wordNorm, label) <= 2;
+    if (label.length >= 5) return editDistance(wordNorm, label) <= 1;
+    return false;
+  };
 
-  // Duplicate Detection
-  const duplicateMap = useMemo(() => {
-    const counts = {};
-    guards.forEach(g => {
-      if (g.cert && g.cert.trim() !== "") {
-        counts[g.cert] = (counts[g.cert] || 0) + 1;
+  // ---- image loading -------------------------------------------------------
+  const isHeic = async file => {
+    const n = (file.name || '').toLowerCase();
+    if (/\.(heic|heif)$/.test(n) || /hei[cf]/.test(file.type || '')) return true;
+    try {
+      const b = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+      const tag = String.fromCharCode.apply(null, b.slice(4, 12));
+      return /^ftyp(heic|heix|hevc|hevx|mif1|msf1|heim|heis)/.test(tag);
+    } catch (e) { return false; }
+  };
+
+  const drawToCappedCanvas = (src, w, h) => {
+    const k = Math.min(1, MAX_SOURCE_SIDE / Math.max(w, h));
+    const c = makeCanvas(w * k, h * k);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    return c;
+  };
+
+  const blobToCanvas = async blob => {
+    // createImageBitmap honours the photo's EXIF rotation
+    if (global.createImageBitmap) {
+      try {
+        const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
+        const c = drawToCappedCanvas(bmp, bmp.width, bmp.height);
+        if (bmp.close) bmp.close();
+        return c;
+      } catch (e) { /* fall through to <img> */ }
+    }
+    return await new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        try { resolve(drawToCappedCanvas(img, img.naturalWidth, img.naturalHeight)); }
+        catch (e) { reject(e); }
+        finally { URL.revokeObjectURL(url); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('This file is not a picture the browser can open.')); };
+      img.src = url;
+    });
+  };
+
+  // Turn any supported file into one or more page canvases.
+  const fileToCanvases = async (file, opts) => {
+    opts = opts || {};
+    const name = (file.name || '').toLowerCase();
+    if (file.type === 'application/pdf' || /\.pdf$/.test(name)) {
+      if (!global.pdfjsLib) throw new Error('PDF support did not load. Check the internet connection and reload.');
+      const buf = await file.arrayBuffer();
+      const pdf = await global.pdfjsLib.getDocument({ data: buf }).promise;
+      const out = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min(4, 2400 / Math.max(base.width, base.height));
+        const vp = page.getViewport({ scale });
+        const c = makeCanvas(vp.width, vp.height);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, c.width, c.height);
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        out.push(c);
+      }
+      return out;
+    }
+    let blob = file;
+    if (await isHeic(file)) {
+      // iPhone photos. Safari opens these natively; other browsers need a decoder.
+      try { return [await blobToCanvas(file)]; } catch (e) { /* not Safari */ }
+      if (opts.heicDecode) blob = await opts.heicDecode(file);
+      else throw new Error('This is an iPhone HEIC photo and the converter did not load. Reload the page and try again.');
+    }
+    return [await blobToCanvas(blob)];
+  };
+
+  // ---- pixel work ----------------------------------------------------------
+  const rotateCanvas = (src, deg) => {
+    deg = ((deg % 360) + 360) % 360;
+    if (!deg) return src;
+    const swap = deg === 90 || deg === 270;
+    const c = makeCanvas(swap ? src.height : src.width, swap ? src.width : src.height);
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(deg * Math.PI / 180);
+    ctx.drawImage(src, -src.width / 2, -src.height / 2);
+    return c;
+  };
+
+  const scaleCanvas = (src, k) => {
+    const c = makeCanvas(src.width * k, src.height * k);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, c.width, c.height);
+    return c;
+  };
+
+  // Grayscale versions tuned for reading printed cards.
+  //   'lum'  - ordinary brightness
+  //   'red'  - red channel only: the red "NOT FDNY EMPLOYEE" overprint and the
+  //            gold seal fade into the white card, black print stays black
+  // flat=true evens out shadows and glare (divide by the local background)
+  const toGray = (src, channel, flat, maskDark) => {
+    const w = src.width, h = src.height;
+    const out = makeCanvas(w, h);
+    const octx = out.getContext('2d', { willReadFrequently: true });
+    octx.drawImage(src, 0, 0);
+    const img = octx.getImageData(0, 0, w, h);
+    const px = img.data;
+    const n = w * h;
+    const g = new Uint8ClampedArray(n);
+    if (channel === 'red') {
+      for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = px[j];
+    } else {
+      for (let i = 0, j = 0; i < n; i++, j += 4) g[i] = (px[j] * 77 + px[j + 1] * 150 + px[j + 2] * 29) >> 8;
+    }
+    if (flat) {
+      // cheap wide blur: shrink then stretch back
+      const k = Math.max(8, Math.round(Math.max(w, h) / 48));
+      const tmp = makeCanvas(w, h);
+      const tctx = tmp.getContext('2d');
+      for (let i = 0, j = 0; i < n; i++, j += 4) { px[j] = px[j + 1] = px[j + 2] = g[i]; px[j + 3] = 255; }
+      tctx.putImageData(img, 0, 0);
+      const small = makeCanvas(Math.ceil(w / k), Math.ceil(h / k));
+      const sctx = small.getContext('2d');
+      sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+      sctx.drawImage(tmp, 0, 0, small.width, small.height);
+      const bgc = makeCanvas(w, h);
+      const bctx = bgc.getContext('2d', { willReadFrequently: true });
+      bctx.imageSmoothingEnabled = true; bctx.imageSmoothingQuality = 'high';
+      bctx.drawImage(small, 0, 0, w, h);
+      const bg = bctx.getImageData(0, 0, w, h).data;
+      // A dark table or a black screenshot border around the card confuses the
+      // reader's page layout step (it clips the label column off the card).
+      // Paint large dark areas white so the card looks like print on paper.
+      let dark = null;
+      if (maskDark) {
+        const k2 = Math.max(4, Math.round(Math.max(w, h) / 100));
+        const s2 = makeCanvas(Math.ceil(w / k2), Math.ceil(h / k2));
+        const s2x = s2.getContext('2d');
+        s2x.imageSmoothingEnabled = true; s2x.imageSmoothingQuality = 'high';
+        s2x.drawImage(tmp, 0, 0, s2.width, s2.height);
+        const d2 = makeCanvas(w, h);
+        const d2x = d2.getContext('2d', { willReadFrequently: true });
+        d2x.imageSmoothingEnabled = true; d2x.imageSmoothingQuality = 'high';
+        d2x.drawImage(s2, 0, 0, w, h);
+        dark = d2x.getImageData(0, 0, w, h).data;
+        freeCanvas(s2); freeCanvas(d2);
+      }
+      let thr = 0;
+      if (dark) {
+        const hh = new Uint32Array(256);
+        for (let i = 0; i < n; i += 7) hh[g[i]]++;
+        let acc2 = 0, p95 = 255;
+        const cut2 = (n / 7) * 0.05;
+        for (let v = 255; v >= 0; v--) { acc2 += hh[v]; if (acc2 > cut2) { p95 = v; break; } }
+        thr = Math.max(24, Math.min(64, p95 * 0.25));
+      }
+      for (let i = 0, j = 0; i < n; i++, j += 4) {
+        if (dark && dark[j] < thr) { g[i] = 235; continue; }
+        const b = bg[j] < 70 ? 70 : bg[j];
+        g[i] = Math.min(255, (g[i] * 225) / b);
+      }
+      freeCanvas(tmp); freeCanvas(small); freeCanvas(bgc);
+    }
+    // contrast stretch between the 1st and 99th percentile
+    const hist = new Uint32Array(256);
+    for (let i = 0; i < n; i++) hist[g[i]]++;
+    let lo = 0, hi = 255, acc = 0;
+    const cut = n * 0.01;
+    for (let v = 0; v < 256; v++) { acc += hist[v]; if (acc > cut) { lo = v; break; } }
+    acc = 0;
+    for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc > cut) { hi = v; break; } }
+    const span = Math.max(40, hi - lo);
+    for (let i = 0, j = 0; i < n; i++, j += 4) {
+      const v = Math.max(0, Math.min(255, ((g[i] - lo) * 255) / span));
+      px[j] = px[j + 1] = px[j + 2] = v; px[j + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    return out;
+  };
+
+  // ---- OCR wrapper ---------------------------------------------------------
+  const ocr = async (worker, canvas, psm, whitelist) => {
+    const params = { tessedit_pageseg_mode: String(psm), tessedit_char_whitelist: whitelist || '', user_defined_dpi: '300' };
+    const key = JSON.stringify(params);
+    if (worker.__fgParams !== key) { await worker.setParameters(params); worker.__fgParams = key; }
+    const { data } = await worker.recognize(canvas, {}, { text: true, blocks: true, hocr: false, tsv: false });
+    const words = (data.words || []).filter(w => w.text && w.text.trim()).map(w => ({
+      t: w.text.trim(), c: w.confidence, x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1
+    }));
+    return { text: data.text || '', words, conf: data.confidence || 0 };
+  };
+
+  // ---- find cards: match label words to the template -----------------------
+  // A transform maps template (u,v) to image (x,y):
+  //   x = a*u - b*v + tx ;  y = b*u + a*v + ty     (a = s*cos, b = s*sin)
+  const applyTf = (tf, u, v) => ({ x: tf.a * u - tf.b * v + tf.tx, y: tf.b * u + tf.a * v + tf.ty });
+  const invTf = (tf, x, y) => {
+    const s2 = tf.a * tf.a + tf.b * tf.b;
+    const dx = x - tf.tx, dy = y - tf.ty;
+    return { u: (tf.a * dx + tf.b * dy) / s2, v: (-tf.b * dx + tf.a * dy) / s2 };
+  };
+  const tfFromPairs = pairs => {
+    // least-squares similarity fit, pairs: [{u,v,x,y}]
+    const n = pairs.length;
+    let mu = 0, mv = 0, mx = 0, my = 0;
+    pairs.forEach(p => { mu += p.u; mv += p.v; mx += p.x; my += p.y; });
+    mu /= n; mv /= n; mx /= n; my /= n;
+    let num_a = 0, num_b = 0, den = 0;
+    pairs.forEach(p => {
+      const pu = p.u - mu, pv = p.v - mv, qx = p.x - mx, qy = p.y - my;
+      num_a += qx * pu + qy * pv;
+      num_b += qy * pu - qx * pv;
+      den += pu * pu + pv * pv;
+    });
+    if (den < 1e-9) return null;
+    const a = num_a / den, b = num_b / den;
+    return { a, b, tx: mx - (a * mu - b * mv), ty: my - (b * mu + a * mv) };
+  };
+
+  const findCards = words => {
+    // candidate (word, template entry) pairs
+    let cands = [];
+    words.forEach((w, wi) => {
+      const wn = norm(w.t);
+      if (wn.length < 3) return;
+      const bw = w.x1 - w.x0, bh = w.y1 - w.y0;
+      if (bw < 8 || bh < 4) return;
+      TPL.forEach((e, ei) => {
+        let ok = labelMatch(wn, e[0]);
+        // "CERT.#92366376" sometimes comes back as one word
+        if (!ok && e[0] === 'CERT' && /^CERT\d{0,2}$/.test(wn)) ok = true;
+        if (!ok) return;
+        cands.push({ wi, ei, w, e, cx: (w.x0 + w.x1) / 2, cy: (w.y0 + w.y1) / 2, bw });
+      });
+    });
+    const cards = [];
+    const evalTf = (tf, pool) => {
+      const s = Math.hypot(tf.a, tf.b);
+      const tol = 0.05 * s;
+      const usedW = new Set(), usedE = new Set();
+      const inl = [];
+      let score = 0;
+      // greedy: best-fitting pairs first
+      const scored = [];
+      pool.forEach(c => {
+        const p = applyTf(tf, (c.e[1] + c.e[2]) / 2, c.e[3]);
+        const d = Math.hypot(p.x - c.cx, p.y - c.cy);
+        if (d > tol) return;
+        const expW = (c.e[2] - c.e[1]) * s;
+        const r = c.bw / expW;
+        if (r < 0.55 || r > 1.7) return;
+        scored.push({ c, d });
+      });
+      scored.sort((x, y) => x.d - y.d);
+      scored.forEach(({ c }) => {
+        if (usedW.has(c.wi) || usedE.has(c.ei)) return;
+        usedW.add(c.wi); usedE.add(c.ei);
+        inl.push(c); score += c.e[4];
+      });
+      return { inl, score };
+    };
+    for (let round = 0; round < 14; round++) {
+      let best = null;
+      const n = cands.length;
+      for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
+          const A = cands[i], B = cands[j];
+          if (A.wi === B.wi || A.ei === B.ei) continue;
+          const au = (A.e[1] + A.e[2]) / 2, bu = (B.e[1] + B.e[2]) / 2;
+          const du = bu - au, dv = B.e[3] - A.e[3];
+          const dT = Math.hypot(du, dv);
+          if (dT < 0.08) continue;
+          const tf = tfFromPairs([{ u: au, v: A.e[3], x: A.cx, y: A.cy }, { u: bu, v: B.e[3], x: B.cx, y: B.cy }]);
+          if (!tf) continue;
+          const s = Math.hypot(tf.a, tf.b);
+          if (s < 120) continue;                               // card too small to be real
+          const ang = Math.atan2(tf.b, tf.a) * 180 / Math.PI;
+          if (Math.abs(ang) > 28) continue;                    // we handle 90-degree turns separately
+          // scale must agree with how wide the two words actually are
+          const rA = A.bw / ((A.e[2] - A.e[1]) * s), rB = B.bw / ((B.e[2] - B.e[1]) * s);
+          if (rA < 0.6 || rA > 1.6 || rB < 0.6 || rB > 1.6) continue;
+          const r = evalTf(tf, cands);
+          if (!best || r.score > best.score) best = { tf, inl: r.inl, score: r.score };
+        }
+      }
+      if (!best || best.inl.length < 3 || best.score < 5) break;
+      // Labels from the left column alone all sit on one line, which cannot pin
+      // down the card (and lets leftovers from two stacked cards pose as one).
+      // Insist on at least one label away from that column.
+      {
+        const us = best.inl.map(c => (c.e[1] + c.e[2]) / 2);
+        if (Math.max.apply(null, us) - Math.min.apply(null, us) < 0.25) {
+          const drop = new Set(best.inl.map(c => c.wi + ':' + c.ei));
+          // forget the weakest member of this false group and look again
+          const weakest = best.inl.slice().sort((x, y) => x.e[4] - y.e[4])[0];
+          cands = cands.filter(c => !(c.wi === weakest.wi && c.ei === weakest.ei));
+          continue;
+        }
+      }
+      // refine twice with every inlier (two points per word: its left and right ends)
+      for (let it = 0; it < 2; it++) {
+        const pairs = [];
+        // word centres only: a tilted word's box has level ends, which would
+        // wrongly pull the fit back toward "no tilt"
+        best.inl.forEach(c => { pairs.push({ u: (c.e[1] + c.e[2]) / 2, v: c.e[3], x: c.cx, y: c.cy }); });
+        if (pairs.length < 3) break;
+        const tf2 = tfFromPairs(pairs);
+        if (!tf2) break;
+        const r2 = evalTf(tf2, cands);
+        if (r2.score >= best.score) best = { tf: tf2, inl: r2.inl, score: r2.score };
+        else break;
+      }
+      // reject a "card" sitting on top of one we already have
+      const centre = applyTf(best.tf, 0.5, 0.36);
+      const clash = cards.some(k => {
+        const p = invTf(k.tf, centre.x, centre.y);
+        return p.u > CARD.u0 && p.u < CARD.u1 && p.v > CARD.v0 && p.v < CARD.v1;
+      });
+      // remove every candidate word that lies inside this card
+      const tfb = best.tf;
+      cands = cands.filter(c => {
+        const p = invTf(tfb, c.cx, c.cy);
+        return !(p.u > CARD.u0 - 0.03 && p.u < CARD.u1 + 0.03 && p.v > CARD.v0 - 0.03 && p.v < CARD.v1 + 0.05);
+      });
+      if (!clash) cards.push({ tf: best.tf, score: best.score, labels: best.inl.length, inl: best.inl });
+    }
+    return cards;
+  };
+
+  // ---- perspective (homography) fit ----------------------------------------
+  // pairs: [{u,v,x,y}]  ->  H such that (x,y) ~ H(u,v). Returns a function.
+  const solveLinear = (A, b) => {
+    const n = b.length;
+    for (let i = 0; i < n; i++) A[i].push(b[i]);
+    for (let c = 0; c < n; c++) {
+      let piv = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      if (Math.abs(A[piv][c]) < 1e-12) return null;
+      const t = A[c]; A[c] = A[piv]; A[piv] = t;
+      for (let r = 0; r < n; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        if (!f) continue;
+        for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    return A.map((row, i) => row[n] / row[i]);
+  };
+  const fitHomography = pairs => {
+    const n = pairs.length;
+    if (n < 4) return null;
+    // normalise both point sets (keeps the solve well conditioned)
+    const stat = (ka, kb) => {
+      let ma = 0, mb = 0;
+      pairs.forEach(p => { ma += p[ka]; mb += p[kb]; });
+      ma /= n; mb /= n;
+      let d = 0;
+      pairs.forEach(p => { d += Math.hypot(p[ka] - ma, p[kb] - mb); });
+      d = d / n || 1;
+      return { ma, mb, s: Math.SQRT2 / d };
+    };
+    const S = stat('u', 'v'), D = stat('x', 'y');
+    // least squares on the 2n x 8 system via normal equations
+    const ATA = []; const ATb = new Array(8).fill(0);
+    for (let i = 0; i < 8; i++) ATA.push(new Array(8).fill(0));
+    pairs.forEach(p => {
+      const u = (p.u - S.ma) * S.s, v = (p.v - S.mb) * S.s;
+      const x = (p.x - D.ma) * D.s, y = (p.y - D.mb) * D.s;
+      const r1 = [u, v, 1, 0, 0, 0, -u * x, -v * x], r2 = [0, 0, 0, u, v, 1, -u * y, -v * y];
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) ATA[i][j] += r1[i] * r1[j] + r2[i] * r2[j];
+        ATb[i] += r1[i] * x + r2[i] * y;
       }
     });
-    return counts;
-  }, [guards]);
+    const h = solveLinear(ATA, ATb);
+    if (!h) return null;
+    return (u, v) => {
+      const un = (u - S.ma) * S.s, vn = (v - S.mb) * S.s;
+      const w = h[6] * un + h[7] * vn + 1;
+      return { x: (h[0] * un + h[1] * vn + h[2]) / w / D.s + D.ma, y: (h[3] * un + h[4] * vn + h[5]) / w / D.s + D.mb };
+    };
+  };
+  // Resample `src` so that output pixel (X,Y) shows template point
+  // (CARD.u0 + X/P, CARD.v0 + Y/P), where map(u,v) gives the pixel in `src`.
+  const resampleCard = (src, map) => {
+    const P = PX_PER_U;
+    const W = Math.round((CARD.u1 - CARD.u0) * P), H = Math.round((CARD.v1 - CARD.v0) * P);
+    const sctx = src.getContext('2d', { willReadFrequently: true });
+    const sw = src.width, sh = src.height;
+    const sd = sctx.getImageData(0, 0, sw, sh).data;
+    const out = makeCanvas(W, H);
+    const octx = out.getContext('2d');
+    const img = octx.createImageData(W, H);
+    const od = img.data;
+    // the map is smooth, so evaluate it on a coarse grid and interpolate
+    const G = 16;
+    const gw = Math.ceil(W / G) + 1, gh = Math.ceil(H / G) + 1;
+    const gx = new Float32Array(gw * gh), gy = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++) for (let i = 0; i < gw; i++) {
+      const q = map(CARD.u0 + (i * G) / P, CARD.v0 + (j * G) / P);
+      gx[j * gw + i] = q.x; gy[j * gw + i] = q.y;
+    }
+    for (let Y = 0; Y < H; Y++) {
+      const j = (Y / G) | 0, fy = (Y - j * G) / G;
+      for (let X = 0; X < W; X++) {
+        const i = (X / G) | 0, fx = (X - i * G) / G;
+        const a = j * gw + i, b = a + 1, c = a + gw, d = c + 1;
+        const x = (gx[a] * (1 - fx) + gx[b] * fx) * (1 - fy) + (gx[c] * (1 - fx) + gx[d] * fx) * fy;
+        const y = (gy[a] * (1 - fx) + gy[b] * fx) * (1 - fy) + (gy[c] * (1 - fx) + gy[d] * fx) * fy;
+        const o = (Y * W + X) * 4;
+        if (x < 0 || y < 0 || x >= sw - 1 || y >= sh - 1) { od[o] = od[o + 1] = od[o + 2] = 255; od[o + 3] = 255; continue; }
+        const x0 = x | 0, y0 = y | 0, tx = x - x0, ty = y - y0;
+        const p = (y0 * sw + x0) * 4, q = p + 4, r = p + sw * 4, s2 = r + 4;
+        const w00 = (1 - tx) * (1 - ty), w10 = tx * (1 - ty), w01 = (1 - tx) * ty, w11 = tx * ty;
+        od[o] = sd[p] * w00 + sd[q] * w10 + sd[r] * w01 + sd[s2] * w11;
+        od[o + 1] = sd[p + 1] * w00 + sd[q + 1] * w10 + sd[r + 1] * w01 + sd[s2 + 1] * w11;
+        od[o + 2] = sd[p + 2] * w00 + sd[q + 2] * w10 + sd[r + 2] * w01 + sd[s2 + 2] * w11;
+        od[o + 3] = 255;
+      }
+    }
+    octx.putImageData(img, 0, 0);
+    return out;
+  };
 
-  // Sorting Logic
-  const sortedGuards = useMemo(() => {
-    let sortableItems = [...guards];
-    if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        let aVal = a[sortConfig.key] || "";
-        let bVal = b[sortConfig.key] || "";
-        if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
-        return 0;
+  // ---- straighten one card -------------------------------------------------
+  // tf is in the coordinates of `src`. Returns the card as a flat, upright image.
+  // First, rough straightening: a little wider than the card so nothing is
+  // lost if the first estimate is slightly off.
+  const ROUGH = { u0: CARD.u0 - 0.09, u1: CARD.u1 + 0.09, v0: CARD.v0 - 0.09, v1: CARD.v1 + 0.09 };
+  const warpCard = (src, tf, B) => {
+    const P = PX_PER_U;
+    const CARD = B || ROUGH;
+    const W = (CARD.u1 - CARD.u0) * P, H = (CARD.v1 - CARD.v0) * P;
+    const c = makeCanvas(W, H);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    const s2 = tf.a * tf.a + tf.b * tf.b;
+    const m11 = P * tf.a / s2, m21 = P * tf.b / s2, m12 = -P * tf.b / s2, m22 = P * tf.a / s2;
+    // where the card's top-left corner sits in the source
+    const cx = tf.a * CARD.u0 - tf.b * CARD.v0 + tf.tx;
+    const cy = tf.b * CARD.u0 + tf.a * CARD.v0 + tf.ty;
+    const dx = -(m11 * cx + m21 * cy), dy = -(m12 * cx + m22 * cy);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.setTransform(m11, m12, m21, m22, dx, dy);
+    ctx.drawImage(src, 0, 0);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    return c;
+  };
+  // template units -> pixel on the straightened card
+  const cardX = u => (u - CARD.u0) * PX_PER_U;
+  const cardY = v => (v - CARD.v0) * PX_PER_U;
+
+  // ---- field parsing -------------------------------------------------------
+  const DIGIT_FIX = { O: '0', o: '0', Q: '0', D: '0', I: '1', l: '1', i: '1', '|': '1', '!': '1', Z: '2', z: '2', S: '5', s: '5', B: '8', G: '6', b: '6', g: '9', q: '9' };
+  const fixDigits = s => (s || '').replace(/[A-Za-z|!]/g, ch => DIGIT_FIX[ch] !== undefined ? DIGIT_FIX[ch] : ch);
+
+  const parseCert = raw => {
+    if (!raw) return null;
+    const d = fixDigits(raw).replace(/[^0-9]/g, '');
+    if (d.length === 8) return d[0] === '9' || !parseDate(d) ? d : null;
+    // nine digits: a stray mark was read as a digit. But a date read with its
+    // slashes as 1s is also nine digits ("092612023"), and that is not a cert.
+    if (d.length === 9 && !parseDate(d)) { const m = d.match(/9\d{7}/); if (m) return m[0]; }
+    return null;
+  };
+
+  const isRealDate = (y, m, d) => {
+    if (!(m >= 1 && m <= 12 && d >= 1 && d <= 31)) return false;
+    const dt = new Date(y, m - 1, d);
+    return dt.getFullYear() === y && dt.getMonth() === m - 1 && dt.getDate() === d;
+  };
+  const iso = (y, m, d) => y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  const yearOk = y => { const now = new Date().getFullYear(); return y >= now - 15 && y <= now + 8; };
+  const parseDate = raw => {
+    if (!raw) return null;
+    const s = fixDigits(raw);
+    let m = s.match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})\s*[\/\-.]\s*(\d{4})/);
+    if (m) {
+      const mo = +m[1], d = +m[2], y = +m[3];
+      if (yearOk(y) && isRealDate(y, mo, d)) return iso(y, mo, d);
+    }
+    const digits = s.replace(/[^0-9]/g, '');
+    const tryPack = p => {
+      if (p.length !== 8) return null;
+      const mo = +p.slice(0, 2), d = +p.slice(2, 4), y = +p.slice(4);
+      return yearOk(y) && isRealDate(y, mo, d) ? iso(y, mo, d) : null;
+    };
+    if (digits.length === 8) return tryPack(digits);
+    // slashes read as the digit 1: 10 digits "MM1DD1YYYY", or 9 with one eaten
+    if (digits.length === 10 && digits[2] === '1' && digits[5] === '1') return tryPack(digits.slice(0, 2) + digits.slice(3, 5) + digits.slice(6));
+    if (digits.length === 9) {
+      if (digits[2] === '1') { const r = tryPack(digits.slice(0, 2) + digits.slice(3)); if (r) return r; }
+      if (digits[4] === '1') { const r = tryPack(digits.slice(0, 4) + digits.slice(5)); if (r) return r; }
+    }
+    return null;
+  };
+
+  const parseName = raw => {
+    if (!raw) return null;
+    let s = raw.replace(/[\r\n]+/g, ' ').replace(/[|_~`"*=+<>\[\]{}()\\\/:;!?@#$%^&,]/g, ' ');
+    s = s.replace(/[^A-Za-z .'\-]/g, ' ').replace(/\s+/g, ' ').trim();
+    s = s.replace(/^N\s?A\s?M\s?E\b\.?\s*/i, '');
+    // keep the run of capitalised words; drop stray lower-case specks
+    const toks = s.split(' ').filter(t => /^[A-Z][A-Z'\-.]*$/.test(t) || /^[A-Z]$/.test(t));
+    while (toks.length && /^[\-.']+$/.test(toks[0])) toks.shift();
+    // trailing one-letter junk ("GERALD DELGADO RENGIFO V") only when 3+ words precede
+    s = toks.join(' ').replace(/[.'\-]+$/g, '').replace(/^[.'\-]+/g, '').trim();
+    if (s.length < 3 || !/[A-Z]{2,}/.test(s)) return null;
+    return s;
+  };
+
+  const parseType = raw => {
+    if (!raw) return null;
+    const s = raw.toUpperCase().replace(/[O]/g, '0');
+    // Fire guard certificates are F-01 through F-04
+    let m = s.match(/F\s*[\-_. ]?\s*0\s*([1-4])(?!\d)/);
+    if (m) return 'F-0' + m[1];
+    m = s.match(/CAT[\s._\-]*F\s*([1-4])\b/);
+    if (m) return 'F-0' + m[1];
+    return null;
+  };
+  // What the DESC. line says is an independent check on the category
+  const typeFromDesc = txt => {
+    const s = (txt || '').toUpperCase();
+    if (/OUTDOOR|^\W*TEM\w\b|TEMP\b/.test(s)) return 'F-04';
+    if (/IMPAIR|CITYWIDE|CITY\s*WIDE/.test(s)) return 'F-01';
+    if (/SHELTER/.test(s)) return 'F-02';
+    if (/INDOOR\s+PLACE/.test(s)) return 'F-03';
+    return null;
+  };
+
+  // Vote across reads. Each read carries `src`, the image version it came from;
+  // two reads of the same version share the same pixels, so only agreement
+  // ACROSS versions counts as independent confirmation.
+  const vote = reads => {
+    const vals = reads.filter(r => r && r.v);
+    if (!vals.length) return { value: null, votes: 0, sources: 0, total: 0, raw: '', alts: [], all: [] };
+    const tally = new Map();
+    vals.forEach(r => {
+      const e = tally.get(r.v) || { v: r.v, n: 0, w: 0, raw: r.raw, src: new Set() };
+      e.n += 1; e.w += (r.w || 1); e.src.add(r.src === undefined ? 0 : r.src);
+      tally.set(r.v, e);
+    });
+    const arr = Array.from(tally.values()).sort((a, b) => (b.src.size - a.src.size) || (b.n - a.n) || (b.w - a.w));
+    const top = arr[0], second = arr[1];
+    return {
+      value: top.v, votes: top.n, sources: top.src.size, total: vals.length, raw: top.raw,
+      rival: second ? second.n : 0, rivalSources: second ? second.src.size : 0,
+      alts: arr.slice(1).map(a => a.v), all: arr
+    };
+  };
+  const confirmed = v => v.value && v.sources >= 2 && v.rivalSources < 2 && v.rival < v.votes;
+
+  // ---- read one straightened card -----------------------------------------
+  // A "band" is one printed row of the card: from x0 to x1, centred on the
+  // line yf(x), `half` pixels tall each way. Rows are followed along their own
+  // slope, so a card photographed at an angle does not bleed into the next row.
+  const cropBand = (gray, z, pad) => {
+    pad = pad === undefined ? 18 : pad;
+    const x0 = Math.max(0, z.x0), x1 = Math.min(gray.width, z.x1);
+    const m = (z.yf(x1) - z.yf(x0)) / Math.max(1, x1 - x0), th = Math.atan(m);
+    const len = Math.max(8, (x1 - x0) / Math.cos(th));
+    const c = makeCanvas(len + pad * 2, z.half * 2 + pad * 2);
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pad, pad, len, z.half * 2); ctx.clip();
+    ctx.translate(pad, pad + z.half); ctx.rotate(-th); ctx.translate(-x0, -z.yf(x0));
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(gray, 0, 0);
+    ctx.restore();
+    return c;
+  };
+  const wordsInBand = (words, z) => words
+    .filter(w => { const cx = (w.x0 + w.x1) / 2, cy = (w.y0 + w.y1) / 2; return cx >= z.x0 && cx <= z.x1 && Math.abs(cy - z.yf(cx)) <= z.half * 0.75; })
+    .sort((a, b) => a.x0 - b.x0);
+
+  const findLabel = (words, label, u0, u1, vc) => {
+    // nearest matching word to where the template expects this label
+    const ex = cardX((u0 + u1) / 2), ey = cardY(vc);
+    let best = null;
+    words.forEach(w => {
+      const wn = norm(w.t);
+      let ok = labelMatch(wn, label);
+      if (!ok && label === 'CERT' && /^CERT/.test(wn)) ok = true;
+      if (!ok) return;
+      const d = Math.hypot((w.x0 + w.x1) / 2 - ex, (w.y0 + w.y1) / 2 - ey);
+      if (d > 0.09 * PX_PER_U) return;
+      if (!best || d < best.d) best = { w, d };
+    });
+    return best ? best.w : null;
+  };
+
+  const readCard = async (worker, cardColor) => {
+    const P = PX_PER_U;
+    // Image versions, tried in order. The third is only used to break a tie.
+    const makers = [
+      () => ({ name: 'red', gray: toGray(cardColor, 'red', false) }),
+      () => ({ name: 'even', gray: toGray(cardColor, 'lum', true) }),
+      () => ({ name: 'plain', gray: toGray(cardColor, 'lum', false) })
+    ];
+    const reads = { cert: [], issued: [], exp: [], name: [], type: [], desc: [] };
+    const debug = [];
+    let labelHits = 0;
+
+    const runVariant = async vi => {
+      const V = makers[vi]();
+      const pass = await ocr(worker, V.gray, 11, '');
+      const W = pass.words;
+      // The label column down the left edge (CERT.#, ISSUED, NAME ... LOCATION)
+      // is the card's spine. Find what we can of it, then use the found labels
+      // to predict where any missing one must be.
+      const SPINE = [
+        ['cert', 'CERT', -0.180, -0.014, 0.082], ['issued', 'ISSUED', -0.178, -0.010, 0.137],
+        ['name', 'NAME', -0.180, -0.050, 0.206], ['home', 'HOME', -0.180, -0.045, 0.265],
+        ['addr', 'ADDR', -0.185, -0.050, 0.322], ['fee', 'FEE', -0.185, -0.095, 0.485],
+        ['desc', 'DESC', -0.190, -0.045, 0.545], ['employer', 'EMPLOYER', -0.190, 0.070, 0.600],
+        ['work', 'WORK', -0.190, -0.035, 0.660], ['location', 'LOCATION', -0.190, 0.050, 0.720]
+      ];
+      const near = (label, ex, ey, radius) => {
+        let best = null;
+        W.forEach(w => {
+          const wn = norm(w.t);
+          let ok = labelMatch(wn, label);
+          if (!ok && label === 'CERT' && /^CERT/.test(wn) && wn.length <= 6) ok = true;
+          if (!ok) return;
+          const d = Math.hypot((w.x0 + w.x1) / 2 - ex, (w.y0 + w.y1) / 2 - ey);
+          if (d > radius) return;
+          if (!best || d < best.d) best = { w, d };
+        });
+        return best ? best.w : null;
+      };
+      const L = {};
+      SPINE.forEach(e => { L[e[0]] = near(e[1], cardX((e[2] + e[3]) / 2), cardY(e[4]), 0.11 * P); });
+      const predictSpine = v => {
+        const pts = SPINE.filter(e => L[e[0]]).map(e => ({ v: e[4], x0: L[e[0]].x0, yc: (L[e[0]].y0 + L[e[0]].y1) / 2, e }));
+        if (!pts.length) return null;
+        if (pts.length === 1) return { x0: pts[0].x0 + (0) , yc: pts[0].yc + (v - pts[0].v) * P };
+        let i = 0;
+        while (i < pts.length - 2 && v > pts[i + 1].v) i++;
+        const A = pts[i], B = pts[i + 1], t = (v - A.v) / (B.v - A.v);
+        return { x0: A.x0 + (B.x0 - A.x0) * t, yc: A.yc + (B.yc - A.yc) * t };
+      };
+      // typical size of a found label against the template (local scale)
+      const ratios = SPINE.filter(e => L[e[0]]).map(e => (L[e[0]].x1 - L[e[0]].x0) / ((e[3] - e[2]) * P)).sort((x, y) => x - y);
+      const lscale = ratios.length ? ratios[ratios.length >> 1] : 1;
+      const guess = {};
+      SPINE.forEach(e => {
+        if (L[e[0]]) return;
+        const q = predictSpine(e[4]);
+        if (!q) return;
+        const wpx = (e[3] - e[2]) * P * lscale;
+        const again2 = near(e[1], q.x0 + wpx / 2, q.yc, 0.05 * P);
+        if (again2) L[e[0]] = again2;
+        else guess[e[0]] = { x0: q.x0, x1: q.x0 + wpx, y0: q.yc - 0.017 * P, y1: q.yc + 0.017 * P, guessed: true };
+      });
+      // label box to use for a row: the real one, else the predicted one
+      const S = k => L[k] || guess[k] || null;
+      const rowY = (k, v) => { const q = S(k); return q ? (q.y0 + q.y1) / 2 : cardY(v); };
+      const dxSpine = k => { const q = S(k), e = SPINE.find(z => z[0] === k); return q ? q.x0 - cardX(e[2]) : 0; };
+      L.expires = near('EXPIRES', cardX(0.405) + dxSpine('issued'), rowY('issued', 0.137), 0.11 * P);
+      L.type = near('TYPE', cardX(0.412) + dxSpine('fee'), rowY('fee', 0.482), 0.11 * P);
+      const hits = Object.keys(L).filter(k => L[k]).length;
+      labelHits = Math.max(labelHits, hits);
+      const ctr = w => ({ x: (w.x0 + w.x1) / 2, y: (w.y0 + w.y1) / 2 });
+      // how much each printed row slopes, measured from label pairs on that row
+      const X = {
+        hdrC: findLabel(W, 'CERTIFICATE', 0.000, 0.430, -0.045), hdrF: findLabel(W, 'FDNY', 0.825, 1.000, -0.045),
+        fit: near('FITNESS', cardX(0.57) + dxSpine('fee'), rowY('fee', 0.482), 0.12 * P),
+        must: findLabel(W, 'MUST', 0.290, 0.400, 0.785), seal: findLabel(W, 'SEAL', 0.825, 0.920, 0.785)
+      };
+      const slopes = [];
+      const addSlope = (a2, b2, v) => {
+        if (!a2 || !b2) return;
+        const p2 = ctr(a2), q2 = ctr(b2);
+        if (Math.abs(q2.x - p2.x) < 0.14 * P) return;
+        const m = (q2.y - p2.y) / (q2.x - p2.x);
+        if (Math.abs(m) < 0.25) slopes.push({ v, m });
+      };
+      addSlope(X.hdrC, X.hdrF, -0.045);
+      addSlope(L.issued, L.expires, 0.137);
+      addSlope(L.fee, X.fit || L.type, 0.482);
+      if (!L.fee && L.type && X.fit) addSlope(L.type, X.fit, 0.482);
+      addSlope(X.must, X.seal, 0.785);
+      slopes.sort((a2, b2) => a2.v - b2.v);
+      const slopeAt = v => {
+        if (!slopes.length) return 0;
+        if (slopes.length === 1) return slopes[0].m;
+        let i = 0;
+        while (i < slopes.length - 2 && v > slopes[i + 1].v) i++;
+        const A = slopes[i], B = slopes[i + 1];
+        const t = Math.max(-0.5, Math.min(1.5, (v - A.v) / (B.v - A.v)));
+        return A.m + (B.m - A.m) * t;
+      };
+      const half = 0.034 * P;
+      // a row's centre line: through its label (or the template spot), along the row's slope
+      const rowLine = (label, uT, vT) => {
+        const m = slopeAt(vT);
+        const p2 = label ? ctr(label) : { x: cardX(uT), y: cardY(vT) };
+        return x => p2.y + m * (x - p2.x);
+      };
+      const Si = S('issued'), Sc = S('cert'), Sn = S('name'), Sf = S('fee'), Sd = S('desc');
+      let datesLine;
+      if (Si && L.expires) {
+        const p2 = ctr(Si), q2 = ctr(L.expires), m = (q2.y - p2.y) / (q2.x - p2.x);
+        datesLine = x => p2.y + m * (x - p2.x);
+      } else datesLine = L.expires ? rowLine(L.expires, 0.405, 0.137) : rowLine(Si, -0.094, 0.137);
+      const certLine = rowLine(Sc, -0.097, 0.082);
+      const nameLine = rowLine(Sn, -0.115, 0.206);
+      const catLine = L.type ? rowLine(L.type, 0.412, 0.482) : rowLine(Sf, -0.14, 0.482);
+      const descLine = rowLine(Sd, -0.117, 0.545);
+
+      const zones = {
+        cert: { x0: Sc ? Sc.x1 + 6 : cardX(-0.008), x1: cardX(0.42), yf: certLine, half },
+        issued: { x0: Si ? Si.x1 + 6 : cardX(-0.004), x1: L.expires ? L.expires.x0 - 6 : cardX(0.295), yf: datesLine, half },
+        exp: { x0: L.expires ? L.expires.x1 + 6 : cardX(0.512), x1: cardX(0.86), yf: datesLine, half },
+        name: { x0: Sn ? Sn.x1 + 6 : cardX(-0.04), x1: cardX(0.615), yf: nameLine, half },
+        cat: { x0: (Sf ? Sf.x1 : cardX(-0.095)) + 0.16 * P * lscale, x1: L.type ? L.type.x0 - 4 : cardX(0.345), yf: catLine, half },
+        desc: { x0: Sd ? Sd.x1 + 4 : cardX(-0.04), x1: cardX(0.86), yf: descLine, half }
+      };
+      const joined = z => wordsInBand(W, z).map(w => w.t).join(' ');
+
+      // (1) values straight from the whole-card read
+      const p1 = { cert: joined(zones.cert), issued: joined(zones.issued), exp: joined(zones.exp), name: joined(zones.name), cat: joined(zones.cat), desc: joined(zones.desc) };
+      reads.cert.push({ v: parseCert(p1.cert), raw: p1.cert, w: 1, src: vi });
+      reads.issued.push({ v: parseDate(p1.issued), raw: p1.issued, w: 1, src: vi });
+      reads.exp.push({ v: parseDate(p1.exp), raw: p1.exp, w: 1, src: vi });
+      reads.name.push({ v: parseName(p1.name), raw: p1.name, w: 1, src: vi });
+      reads.type.push({ v: parseType(p1.cat), raw: p1.cat, w: 1, src: vi });
+      reads.desc.push({ v: typeFromDesc(p1.desc), raw: p1.desc, w: 1, src: vi });
+
+      // (2) each field re-read on its own as a single line
+      const strip = async (z, whitelist) => {
+        const c = cropBand(V.gray, z);
+        const r = await ocr(worker, c, 7, whitelist);
+        freeCanvas(c);
+        return r.text.replace(/\s+/g, ' ').trim();
+      };
+      const st = {
+        cert: await strip(zones.cert, '0123456789'),
+        issued: await strip(zones.issued, '0123456789/'),
+        exp: await strip(zones.exp, '0123456789/'),
+        name: await strip(zones.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ -'."),
+        cat: await strip(zones.cat, 'CATF.0123456789 ')
+      };
+      reads.cert.push({ v: parseCert(st.cert), raw: st.cert, w: 1.5, src: vi });
+      reads.issued.push({ v: parseDate(st.issued), raw: st.issued, w: 1.5, src: vi });
+      reads.exp.push({ v: parseDate(st.exp), raw: st.exp, w: 1.5, src: vi });
+      reads.name.push({ v: parseName(st.name), raw: st.name, w: 1.2, src: vi });
+      reads.type.push({ v: parseType(st.cat), raw: st.cat, w: 1.2, src: vi });
+      debug.push({ variant: V.name, card: p1, strip: st, labels: hits });
+      freeCanvas(V.gray);
+    };
+
+    await runVariant(0);
+    await runVariant(1);
+    let cert = vote(reads.cert), issued = vote(reads.issued), exp = vote(reads.exp), name = vote(reads.name);
+    if (!(confirmed(cert) && confirmed(exp) && confirmed(name))) {
+      await runVariant(2);                                    // tie-breaker
+      cert = vote(reads.cert); issued = vote(reads.issued); exp = vote(reads.exp); name = vote(reads.name);
+    }
+    const type = vote(reads.type), desc = vote(reads.desc);
+
+    const out = {
+      name: name.value || '', cert: cert.value || '', exp: exp.value || '', issued: issued.value || '',
+      type: type.value || desc.value || '',
+      ok: { name: !!confirmed(name), cert: !!confirmed(cert), exp: !!confirmed(exp), type: false },
+      raw: { name: name.raw, cert: cert.raw, exp: exp.raw },
+      labelHits, debug
+    };
+
+    // ---- cross-checks -----------------------------------------------------
+    // category: printed code and the description line should tell the same story
+    if (type.value && desc.value) {
+      if (type.value === desc.value) out.ok.type = true;
+      else {
+        // the description is a whole phrase, far harder to misread than one digit
+        if (desc.sources >= 2 && !(type.sources >= 2 && type.votes >= 3)) out.type = desc.value;
+        out.ok.type = false;
+      }
+    } else if (type.value) out.ok.type = !!confirmed(type);
+    else if (desc.value) out.ok.type = desc.sources >= 2;
+
+    // dates. A new card expires three years to the day after issue; that
+    // pattern is a second witness for whichever candidate fits it.
+    const plus3 = d => d ? (+d.slice(0, 4) + 3) + d.slice(4) : null;
+    const minus3 = d => d ? (+d.slice(0, 4) - 3) + d.slice(4) : null;
+    if (issued.value && confirmed(issued)) {
+      const want = plus3(issued.value);
+      const hit = exp.all && exp.all.find(a => a.v === want);
+      if (hit) { out.exp = want; out.ok.exp = true; }
+    } else if (exp.value && confirmed(exp)) {
+      const hit = issued.all && issued.all.find(a => a.v === minus3(exp.value));
+      if (hit) out.issued = hit.v;
+    }
+    if (out.exp && out.issued && out.exp <= out.issued) {
+      // expiry can never be on or before the issue date: one was mis-assigned
+      const later = out.issued; out.issued = out.exp; out.exp = later;
+      out.ok.exp = false;
+    }
+    if (out.exp && out.issued && (+out.exp.slice(0, 4)) - (+out.issued.slice(0, 4)) > 4) out.ok.exp = false;
+    if (out.cert && !/^9\d{7}$/.test(out.cert)) out.ok.cert = false;
+    return out;
+  };
+
+  // ---- one photo, start to finish -----------------------------------------
+  const ROTATIONS = [0, 90, 270, 180];
+
+  const locatePass = async (worker, source, rot, prep) => {
+    const k = Math.min(3, LOCATE_LONG_SIDE / Math.max(source.width, source.height));
+    const small = scaleCanvas(source, k);
+    const turned = rotateCanvas(small, rot);
+    const gray = prep === 'plain' ? toGray(turned, 'lum', false) : toGray(turned, 'lum', true, true);
+    const pass = await ocr(worker, gray, 11, '');
+    const cards = findCards(pass.words);
+    if (small !== turned) freeCanvas(small);
+    freeCanvas(turned); freeCanvas(gray);
+    return { rot, k, cards, total: cards.reduce((n, c) => n + c.score, 0), prep };
+  };
+
+  // People photograph both of a guard's cards together. If one card's name
+  // came through clean and the other is a near miss of it, they are the same person.
+  const reconcileNames = cards => {
+    // "Similar" has to mean "the same name, damaged", never "another guard with
+    // a name a bit like it": a sheet can hold several different people.
+    const similar = (a, b) => {
+      if (!a || !b) return false;
+      if (a === b) return true;
+      const ed = editDistanceFull(a, b);
+      if (ed <= 2) return true;
+      const limit = Math.floor(0.3 * Math.max(a.length, b.length));
+      if (ed > limit) return false;
+      const ta = a.split(' '), tb = b.split(' ');
+      const shared = ta.filter(t => tb.indexOf(t) >= 0).length;
+      if (shared >= 2) return true;
+      const la = ta[ta.length - 1], lb = tb[tb.length - 1];
+      return la === lb && la.length >= 5 && ta[0].slice(0, 3) === tb[0].slice(0, 3);
+    };
+    const good = cards.filter(c => c.ok.name && c.name);
+    // an unconfirmed name that is a damaged copy of a confirmed one on the same photo
+    cards.forEach(c => {
+      if (c.ok.name || !c.name) return;
+      const m = good.find(g => g !== c && similar(g.name, c.name));
+      if (m) { c.name = m.name; c.ok.name = true; c.nameFromSibling = true; }
+    });
+    // two confirmed names that nearly match but differ: do not change either,
+    // just ask a person to look at the odd one out
+    for (let i = 0; i < good.length; i++) for (let j = i + 1; j < good.length; j++) {
+      const x = good[i], y = good[j];
+      if (x.name === y.name || !similar(x.name, y.name)) continue;
+      const count = nm => good.filter(g => g.name === nm).length;
+      const cx = count(x.name), cy = count(y.name);
+      if (cx <= cy) x.ok.name = false;
+      if (cy <= cx) y.ok.name = false;
+      // two other cards agree with each other: show their spelling, still marked
+      if (cx === 1 && cy >= 2) x.name = y.name;
+      else if (cy === 1 && cx >= 2) y.name = x.name;
+    }
+  };
+
+  // where a point found on a turned, shrunken copy sits on the original photo
+  const toSource = (pt, rot, k, source) => {
+    const swap = rot === 90 || rot === 270;
+    const rw = (swap ? source.height : source.width) * k, rh = (swap ? source.width : source.height) * k;
+    const xr = pt.x - rw / 2, yr = pt.y - rh / 2, t = rot * Math.PI / 180;
+    const dx = xr * Math.cos(t) + yr * Math.sin(t), dy = -xr * Math.sin(t) + yr * Math.cos(t);
+    return { x: dx / k + source.width / 2, y: dy / k + source.height / 2 };
+  };
+
+  const scanCanvas = async (worker, source, onStep, thorough) => {
+    const step = onStep || (() => {});
+    let best = null;
+    const tried = [], passes = [];
+    const consider = r => { passes.push(r); tried.push({ rot: r.rot, prep: r.prep, total: r.total, cards: r.cards.length }); if (!best || r.total > best.total) best = r; };
+    const strong = () => best && best.cards.length && best.cards[0].score >= 12;
+    for (const prep of ['clean', 'plain']) {
+      for (const rot of ROTATIONS) {
+        step(rot === 0 && prep === 'clean' ? 'Looking for the card' : 'Card is turned or hard to see, trying another way');
+        consider(await locatePass(worker, source, rot, prep));
+        if (strong()) break;
+      }
+      if (strong()) break;
+    }
+    if (!best || !best.cards.length) return { cards: [], tried, rotation: 0 };
+
+    // The job list: every card, with the turn it was found at.
+    const centre = (c, r) => toSource(applyTf(c.tf, 0.5, 0.36), r.rot, r.k, source);
+    const size = (c, r) => Math.hypot(c.tf.a, c.tf.b) / r.k;
+    const jobs = best.cards.map(c => ({ c, rot: best.rot, k: best.k, at: centre(c, best), U: size(c, best) }));
+    // A scanned sheet, or a photo of several cards, can hold cards lying at
+    // different angles. Look at the other turns too and keep any card that is
+    // clearly there and is not one we already have.
+    if (thorough || best.cards.length >= 2) {
+      for (const rot of ROTATIONS) {
+        if (rot === best.rot) continue;
+        let r = passes.find(q => q.rot === rot && q.prep === 'clean');
+        if (!r) { step('Checking for cards lying another way'); r = await locatePass(worker, source, rot, 'clean'); }
+        r.cards.forEach(c => {
+          if (c.score < 12) return;
+          const at = centre(c, r), U = size(c, r);
+          if (jobs.some(j => Math.hypot(j.at.x - at.x, j.at.y - at.y) < 0.5 * Math.max(j.U, U))) return;
+          jobs.push({ c, rot, k: r.k, at, U });
+        });
+      }
+    }
+    // reading order on the page: top to bottom, left to right
+    jobs.sort((x, y) => Math.abs(x.at.y - y.at.y) > 0.45 * Math.max(x.U, y.U) ? x.at.y - y.at.y : x.at.x - y.at.x);
+
+    const fulls = {};
+    const fullFor = rot => { if (!fulls[rot]) fulls[rot] = rotateCanvas(source, rot); return fulls[rot]; };
+    const results = [];
+    const P = PX_PER_U;
+    for (let i = 0; i < jobs.length; i++) {
+      step(jobs.length > 1 ? 'Reading card ' + (i + 1) + ' of ' + jobs.length : 'Reading the card');
+      const c = jobs[i].c, jk = jobs[i].k, full = fullFor(jobs[i].rot);
+      const tf = { a: c.tf.a / jk, b: c.tf.b / jk, tx: c.tf.tx / jk, ty: c.tf.ty / jk };
+      const rough = warpCard(full, tf, ROUGH);
+      // Second look: find the labels again on the straightened card, where they
+      // are large and isolated, and correct any tilt or camera angle.
+      let map = (u, v) => ({ x: (u - ROUGH.u0) * P, y: (v - ROUGH.v0) * P });
+      let refine = 'none';
+      try {
+        let again = [];
+        const expC = { x: (0.5 - ROUGH.u0) * P, y: (0.36 - ROUGH.v0) * P };
+        for (const prep of [['lum', true, true], ['lum', false, false]]) {
+          const g = toGray(rough, prep[0], prep[1], prep[2]);
+          const p = await ocr(worker, g, 11, '');
+          freeCanvas(g);
+          // the rough crop can include a slice of a neighbouring card: keep only
+          // a match that sits where this card is expected
+          const found = findCards(p.words).filter(f => {
+            const z = applyTf(f.tf, 0.5, 0.36);
+            const ang = Math.abs(Math.atan2(f.tf.b, f.tf.a)) * 180 / Math.PI;
+            return Math.hypot(z.x - expC.x, z.y - expC.y) < 0.11 * P && ang < 16;
+          });
+          if (found.length && (!again.length || found[0].score > again[0].score)) again = found;
+          if (again.length && again[0].labels >= 9) break;
+        }
+        if (again.length && again[0].labels >= 4) {
+          const r = again[0];
+          const ratio = Math.hypot(r.tf.a, r.tf.b) / P;
+          if (ratio > 0.8 && ratio < 1.25) {
+            map = (u, v) => applyTf(r.tf, u, v);
+            refine = 'tilt';
+            // enough labels spread over the card: also undo the camera angle
+            if (r.labels >= 7) {
+              const pairs = [];
+              const th = Math.atan2(r.tf.b, r.tf.a), co = Math.cos(th), si = Math.sin(th);
+              r.inl.forEach(q => {
+                const half = (q.w.x1 - q.w.x0) / 2 / Math.max(0.9, co);
+                pairs.push({ u: q.e[1], v: q.e[3], x: q.cx - half * co, y: q.cy - half * si });
+                pairs.push({ u: q.e[2], v: q.e[3], x: q.cx + half * co, y: q.cy + half * si });
+              });
+              const us = pairs.map(q => q.u), vs = pairs.map(q => q.v);
+              const spreadU = Math.max.apply(null, us) - Math.min.apply(null, us);
+              const spreadV = Math.max.apply(null, vs) - Math.min.apply(null, vs);
+              const Hm = spreadU > 0.9 && spreadV > 0.6 ? fitHomography(pairs) : null;
+              if (Hm) {
+                // sanity: must stay close to the simpler fit, and fit the labels well
+                let err = 0, dev = 0;
+                pairs.forEach(q => { const z = Hm(q.u, q.v); err += Math.hypot(z.x - q.x, z.y - q.y); });
+                err /= pairs.length;
+                [[CARD.u0, CARD.v0], [CARD.u1, CARD.v0], [CARD.u0, CARD.v1], [CARD.u1, CARD.v1]].forEach(k2 => {
+                  const z = Hm(k2[0], k2[1]), y = applyTf(r.tf, k2[0], k2[1]);
+                  dev = Math.max(dev, Math.hypot(z.x - y.x, z.y - y.y));
+                });
+                if (err < 0.012 * P && dev < 0.12 * P) { map = Hm; refine = 'angle'; }
+              }
+            }
+          }
+        }
+      } catch (e) { /* keep the rough crop */ }
+      const color = resampleCard(rough, map);
+      freeCanvas(rough);
+      const data = await readCard(worker, color);
+      data.refine = refine;
+      // a small colour copy of the straightened card for the roster and the PDF
+      const thumb = scaleCanvas(color, 900 / color.width);
+      data.cardImage = thumb.toDataURL('image/jpeg', 0.82);
+      freeCanvas(thumb); freeCanvas(color);
+      data.locateScore = c.score;
+      results.push(data);
+    }
+    Object.keys(fulls).forEach(r => { if (fulls[r] !== source) freeCanvas(fulls[r]); });
+    reconcileNames(results);
+    return { cards: results, tried, rotation: best.rot };
+  };
+
+  const scanFile = async (worker, file, opts) => {
+    opts = opts || {};
+    const pages = await fileToCanvases(file, opts);
+    const all = [];
+    let preview = null;
+    for (let i = 0; i < pages.length; i++) {
+      const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
+      const res = await scanCanvas(worker, pages[i], opts.onStep, isPdf);
+      if (!preview) {
+        const t = scaleCanvas(pages[i], Math.min(1, 700 / Math.max(pages[i].width, pages[i].height)));
+        const tr = rotateCanvas(t, res.rotation || 0);
+        preview = tr.toDataURL('image/jpeg', 0.7);
+        if (t !== tr) freeCanvas(t);
+        freeCanvas(tr);
+      }
+      res.cards.forEach(c => all.push(c));
+      freeCanvas(pages[i]);
+    }
+    return { cards: all, preview, pages: pages.length };
+  };
+
+  global.FireGuardScanner = {
+    scanFile, scanCanvas, fileToCanvases,
+    // exposed for tests
+    _internals: { findCards, parseCert, parseDate, parseName, parseType, typeFromDesc, vote, norm, labelMatch, toGray, warpCard, rotateCanvas, scaleCanvas, ocr }
+  };
+})(window);
+
+</script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (s, r) { return (r || document).querySelector(s); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
+  var LS_ROWS = 'ares_fg_roster_v3', LS_SET = 'ares_fg_settings_v3';
+  var CDN = {
+    heic: 'https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js',
+    pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+    pdfWorker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  };
+  var todayISO = function () { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); };
+
+  var state = {
+    rows: [], photos: [], images: {}, filter: 'all', sort: { key: null, dir: 1 }, reviewId: null,
+    settings: { company: 'Ares Security Consulting', client: '', date: todayISO() }
+  };
+
+  // ---------- storage (text in localStorage, card pictures in IndexedDB) ----------
+  var save = function () {
+    try { localStorage.setItem(LS_ROWS, JSON.stringify(state.rows)); } catch (e) {}
+    try { localStorage.setItem(LS_SET, JSON.stringify(state.settings)); } catch (e) {}
+  };
+  var idb = null;
+  var idbOpen = function () {
+    return new Promise(function (res) {
+      try {
+        var rq = indexedDB.open('ares_fg_v3', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('img'); };
+        rq.onsuccess = function () { idb = rq.result; res(idb); };
+        rq.onerror = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+  };
+  var idbDo = function (mode, fn) {
+    return new Promise(function (res) {
+      if (!idb) return res(null);
+      try { var tx = idb.transaction('img', mode); var out = fn(tx.objectStore('img')); tx.oncomplete = function () { res(out && out.result); }; tx.onerror = function () { res(null); }; }
+      catch (e) { res(null); }
+    });
+  };
+  var imgPut = function (id, data) { state.images[id] = data; idbDo('readwrite', function (s) { s.put(data, id); }); };
+  var imgDel = function (id) { delete state.images[id]; idbDo('readwrite', function (s) { s.delete(id); }); };
+  var imgClear = function () { state.images = {}; idbDo('readwrite', function (s) { s.clear(); }); };
+
+  // ---------- roster rules ----------
+  var FIELDS = ['name', 'type', 'cert', 'exp'];
+  var needsCheck = function (r) { return FIELDS.some(function (f) { return r.flags && r.flags[f]; }); };
+  var parseISO = function (s) { if (!s) return null; var p = s.split('-'); if (p.length !== 3) return null; var d = new Date(+p[0], +p[1] - 1, +p[2]); return isNaN(d) ? null : d; };
+  var fmtDate = function (s) { var d = parseISO(s); if (!d) return ''; return String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0') + '/' + d.getFullYear(); };
+  var fmtLong = function (s) { var d = parseISO(s); return d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''; };
+  // a card must be valid on the day of the event
+  var status = function (r) {
+    var exp = parseISO(r.exp), ref = parseISO(state.settings.date) || new Date();
+    if (!exp) return { k: 'n', label: 'No date', csv: 'No date' };
+    var days = Math.round((exp - ref) / 86400000);
+    if (days < 0) return { k: 'r', label: 'Expired', csv: 'Expired' };
+    if (days <= 30) return { k: 'a', label: days === 0 ? 'Expires that day' : 'Expires in ' + days + 'd', csv: 'Expires within 30 days' };
+    return { k: 'g', label: 'Valid', csv: 'Valid' };
+  };
+  var dupes = function () { var c = {}; state.rows.forEach(function (r) { if (r.cert) c[r.cert] = (c[r.cert] || 0) + 1; }); return c; };
+  var visibleRows = function () {
+    var rows = state.rows.slice();
+    if (state.sort.key) {
+      var k = state.sort.key, d = state.sort.dir;
+      rows.sort(function (a, b) { var x = (a[k] || '').toString(), y = (b[k] || '').toString(); return x < y ? -d : x > y ? d : 0; });
+    }
+    if (state.filter === 'check') rows = rows.filter(needsCheck);
+    if (state.filter === 'exp') rows = rows.filter(function (r) { var s = status(r).k; return s === 'r' || s === 'a'; });
+    return rows;
+  };
+
+  // ---------- rendering ----------
+  var renderSummary = function () {
+    var n = state.rows.length, chk = state.rows.filter(needsCheck).length;
+    var bad = state.rows.filter(function (r) { var s = status(r).k; return s === 'r' || s === 'a'; }).length;
+    var d = dupes(), dup = Object.keys(d).filter(function (k) { return d[k] > 1; }).length;
+    $('#summary').innerHTML = n ? '<b>' + n + '</b> ' + (n === 1 ? 'card' : 'cards') + ' on the roster' + (chk ? ' · <b>' + chk + '</b> to check' : ' · all confirmed') + (bad ? ' · <b>' + bad + '</b> expired or expiring' : '') + (dup ? ' · <b>' + dup + '</b> listed twice' : '') : 'No cards yet.';
+    $('#chips').innerHTML = n ? [['all', 'All', n], ['check', 'To check', chk], ['exp', 'Expired or expiring', bad]].map(function (c) {
+      return '<button type="button" class="chip' + (state.filter === c[0] ? ' on' : '') + '" data-filter="' + c[0] + '">' + c[1] + '<span class="c">' + c[2] + '</span></button>';
+    }).join('') : '';
+    var cb = $('#checkBanner');
+    if (chk) { cb.className = 'banner warn show'; cb.innerHTML = chk + (chk === 1 ? ' card needs' : ' cards need') + ' a quick look before you send this. <button type="button" class="btn small" id="reviewAll" style="margin-left:8px">Review now</button>'; }
+    else { cb.className = 'banner warn'; cb.innerHTML = ''; }
+    $('#exportTitle').textContent = n ? 'Roster of ' + n + (state.settings.client ? ' for ' + state.settings.client : '') : 'Roster for your client';
+    $('#pdf').disabled = !n; $('#csv').disabled = !n;
+  };
+  var renderRoster = function () {
+    var rows = visibleRows(), d = dupes();
+    if (!state.rows.length) { $('#roster').innerHTML = '<div class="empty-roster">Guards will appear here as their cards are read.</div>'; renderSummary(); return; }
+    if (!rows.length) { $('#roster').innerHTML = '<div class="empty-roster">Nothing in this view.</div>'; renderSummary(); return; }
+    var arrow = function (k) { return state.sort.key === k ? (state.sort.dir > 0 ? ' ▲' : ' ▼') : ''; };
+    var h = '<table><thead><tr><th></th><th>Card</th><th class="sortable" data-sort="name">Full name' + arrow('name') + '</th><th class="sortable" data-sort="type">Type' + arrow('type') + '</th><th class="sortable" data-sort="cert">Certificate #' + arrow('cert') + '</th><th class="sortable" data-sort="exp">Expires' + arrow('exp') + '</th><th>Status</th><th></th></tr></thead><tbody>';
+    rows.forEach(function (r, i) {
+      var st = status(r), chk = needsCheck(r), fl = r.flags || {};
+      var img = state.images[r.id];
+      h += '<tr data-id="' + r.id + '" class="' + (chk ? 'flag' : 'ok') + '" draggable="' + (state.sort.key || state.filter !== 'all' ? 'false' : 'true') + '">' +
+        '<td class="num" title="Drag to reorder">' + String(i + 1).padStart(2, '0') + '</td>' +
+        '<td>' + (img ? '<a class="thumb" data-act="review" style="background-image:url(' + img + ')" title="Compare with the card"></a>' : '<span class="thumb empty">By hand</span>') + '</td>' +
+        '<td class="name' + (fl.name ? ' check' : '') + '" data-l="Full name"><input data-f="name" value="' + esc(r.name) + '" placeholder="Full name" autocomplete="off"></td>' +
+        '<td class="type' + (fl.type ? ' check' : '') + '" data-l="Type"><select data-f="type">' + ['', 'F-01', 'F-02', 'F-03', 'F-04'].map(function (t) { return '<option value="' + t + '"' + (r.type === t ? ' selected' : '') + '>' + (t || 'Choose') + '</option>'; }).join('') + '</select></td>' +
+        '<td class="cert' + (fl.cert ? ' check' : '') + '" data-l="Certificate #"><input data-f="cert" value="' + esc(r.cert) + '" placeholder="Number" inputmode="numeric" autocomplete="off"></td>' +
+        '<td class="exp' + (fl.exp ? ' check' : '') + '" data-l="Expires"><input data-f="exp" type="date" value="' + esc(r.exp) + '"></td>' +
+        '<td><span class="pill ' + st.k + '">' + st.label + '</span>' + (r.cert && d[r.cert] > 1 ? ' <span class="pill a">Listed twice</span>' : '') + '</td>' +
+        '<td style="white-space:nowrap;text-align:right">' + (chk ? '<button type="button" class="rowbtn review" data-act="review">Check</button>' : '') + '<button type="button" class="rowbtn" data-act="remove" title="Remove this guard">Remove</button></td></tr>';
+    });
+    $('#roster').innerHTML = h + '</tbody></table>';
+    renderSummary();
+  };
+  var renderProgress = function () {
+    var ph = state.photos, total = ph.length;
+    if (!total) { $('#progress').innerHTML = ''; return; }
+    var done = ph.filter(function (p) { return p.status !== 'waiting' && p.status !== 'reading'; }).length;
+    var busy = done < total;
+    var h = '';
+    if (busy) h += '<div class="bar"><i style="width:' + Math.round(100 * (done + 0.3) / total) + '%"></i></div><div class="note" style="margin-top:8px"><span class="spin"></span>Reading photo ' + Math.min(total, done + 1) + ' of ' + total + '. You can keep adding more.</div>';
+    h += '<div class="photos">' + ph.map(function (p) {
+      var st = p.status === 'waiting' ? 'Waiting' : p.status === 'reading' ? (p.note || 'Reading') : p.status === 'done' ? (p.count + (p.count === 1 ? ' card read' : ' cards read')) : p.status === 'none' ? 'No fire guard card found' : (p.note || 'Could not open this file');
+      return '<div class="photo ' + p.status + '" data-pid="' + p.id + '"><span class="th"' + (p.thumb ? ' style="background-image:url(' + p.thumb + ')"' : '') + '></span><div><div class="nm" title="' + esc(p.name) + '">' + esc(p.name) + '</div><div class="st">' + esc(st) + '</div></div>' +
+        (p.status === 'none' || p.status === 'error' ? '<button type="button" class="btn ghost small" data-pact="hand" style="margin-left:auto">Add by hand</button>' : '') +
+        (p.status !== 'reading' && p.status !== 'waiting' ? '<button type="button" class="x" data-pact="dismiss" title="Hide">×</button>' : '') + '</div>';
+    }).join('') + '</div>';
+    $('#progress').innerHTML = h;
+  };
+  var showErr = function (msg) { var b = $('#errBanner'); b.textContent = msg || ''; b.className = 'banner err' + (msg ? ' show' : ''); };
+
+  // ---------- scanning ----------
+  var workers = [], workersReady = null;
+  var loadScript = function (src) {
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function () { rej(new Error('Could not load ' + src)); };
+      document.head.appendChild(s);
+    });
+  };
+  var ensureWorkers = function () {
+    if (workersReady) return workersReady;
+    workersReady = (async function () {
+      if (!window.Tesseract) throw new Error('The scanner could not load. Check the internet connection, then reload this page.');
+      var cores = navigator.hardwareConcurrency || 2;
+      var mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+      var n = mobile ? 1 : cores >= 8 ? 3 : cores >= 4 ? 2 : 1;
+      var opts = {};
+      // when this page ships with its own copy of the reading data, use it
+      // (one less thing to fetch from the internet); otherwise use the public copy
+      try {
+        var base = new URL('.', location.href).href.replace(/\/$/, '');
+        if (/^https?:/.test(base)) {
+          var probe = await fetch(base + '/eng.traineddata.gz', { method: 'HEAD' });
+          if (probe.ok) opts.langPath = base;
+        }
+      } catch (e) {}
+      // Inside a Claude preview the page cannot fetch the reading data from the
+      // internet, so it carries its own copy and hands it to the scanner through
+      // the scanner's own offline cache.
+      if (window.claude && !window.FG_LANG_B64) { try { await loadScript('lang-eng.js'); } catch (e) {} }
+      if (window.FG_LANG_B64) {
+        try {
+          var bin = atob(window.FG_LANG_B64), bytes = new Uint8Array(bin.length);
+          for (var j = 0; j < bin.length; j++) bytes[j] = bin.charCodeAt(j);
+          await new Promise(function (res, rej) {
+            var rq = indexedDB.open('keyval-store');
+            rq.onupgradeneeded = function () { rq.result.createObjectStore('keyval'); };
+            rq.onerror = function () { rej(rq.error); };
+            rq.onsuccess = function () {
+              var tx = rq.result.transaction('keyval', 'readwrite');
+              tx.objectStore('keyval').put(bytes, './eng.traineddata');
+              tx.oncomplete = function () { rq.result.close(); res(); };
+              tx.onerror = function () { rej(tx.error); };
+            };
+          });
+        } catch (e) {}
+      }
+      for (var i = 0; i < n; i++) workers.push(await Tesseract.createWorker('eng', 1, opts));
+      return workers;
+    })();
+    workersReady.catch(function () { workersReady = null; });
+    return workersReady;
+  };
+  var heicDecode = async function (file) {
+    if (!window.HeicTo) await loadScript(CDN.heic);
+    return await window.HeicTo({ blob: file, type: 'image/jpeg', quality: 0.92 });
+  };
+  var ensurePdf = async function () {
+    if (window.pdfjsLib) return;
+    await loadScript(CDN.pdf);
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = CDN.pdfWorker;
+  };
+  var rowFromCard = function (c, photoName) {
+    return {
+      id: uid(), name: c.name || '', type: c.type || '', cert: c.cert || '', exp: c.exp || '', issued: c.issued || '',
+      flags: { name: !c.ok.name || !c.name, type: !c.ok.type || !c.type, cert: !c.ok.cert || !c.cert, exp: !c.ok.exp || !c.exp },
+      src: 'scan', photo: photoName
+    };
+  };
+  var pumping = false;
+  var pump = async function () {
+    if (pumping) return; pumping = true;
+    try {
+      var ws;
+      try { ws = await ensureWorkers(); showErr(''); }
+      catch (e) {
+        showErr(e.message || 'The scanner could not start.');
+        state.photos.forEach(function (p) { if (p.status === 'waiting') { p.status = 'error'; p.note = 'Scanner did not start'; } });
+        renderProgress(); return;
+      }
+      var next = function () { return state.photos.find(function (p) { return p.status === 'waiting'; }); };
+      var lane = async function (worker) {
+        var p;
+        while ((p = next())) {
+          p.status = 'reading'; p.note = 'Opening'; renderProgress();
+          try {
+            if (/\.pdf$/i.test(p.name) || (p.file && p.file.type === 'application/pdf')) await ensurePdf();
+            var res = await FireGuardScanner.scanFile(worker, p.file, { heicDecode: heicDecode, onStep: (function (ph) { return function (s) { ph.note = s; renderProgress(); }; })(p) });
+            p.thumb = res.preview; p.count = res.cards.length;
+            res.cards.forEach(function (c) { var r = rowFromCard(c, p.name); state.rows.push(r); if (c.cardImage) imgPut(r.id, c.cardImage); });
+            p.status = res.cards.length ? 'done' : 'none';
+            if (res.cards.length) p.file = null;
+          } catch (e) {
+            p.status = 'error'; p.note = (e && e.message) ? e.message : 'Could not open this file';
+          }
+          save(); renderProgress(); renderRoster();
+        }
+      };
+      await Promise.all(ws.map(lane));
+    } finally { pumping = false; if (state.photos.some(function (p) { return p.status === 'waiting'; })) pump(); }
+  };
+  var addFiles = function (list) {
+    var files = Array.prototype.slice.call(list || []).filter(function (f) {
+      return /^image\//.test(f.type) || f.type === 'application/pdf' || /\.(heic|heif|pdf|jpe?g|png|webp|gif|bmp|tiff?)$/i.test(f.name || '');
+    });
+    if (!files.length) return;
+    files.forEach(function (f) { state.photos.push({ id: uid(), name: f.name || 'Photo', status: 'waiting', note: '', thumb: null, file: f, count: 0 }); });
+    renderProgress(); pump();
+  };
+  var addManual = function () {
+    var r = { id: uid(), name: '', type: 'F-04', cert: '', exp: '', issued: '', flags: { name: false, type: false, cert: false, exp: false }, src: 'manual' };
+    state.rows.push(r); save(); state.filter = 'all'; renderRoster(); openReview(r.id);
+  };
+
+  // ---------- review dialog ----------
+  var reviewList = function () { var v = visibleRows(); var chk = v.filter(needsCheck); return chk.length && needsCheck(rowById(state.reviewId) || {}) ? chk : v; };
+  var rowById = function (id) { return state.rows.find(function (r) { return r.id === id; }); };
+  var openReview = function (id) {
+    var r = rowById(id); if (!r) return closeReview();
+    state.reviewId = id;
+    var img = state.images[id];
+    $('#mPic').innerHTML = img ? '<img alt="Card" src="' + img + '">' : '<div class="nopic">Added by hand, no card picture</div>';
+    var chk = needsCheck(r);
+    $('#mTitle').textContent = chk ? 'Check this card' : (r.name || 'Guard');
+    $('#mHint').textContent = chk ? 'Compare the yellow boxes with the card, fix anything that is off, then press Looks right.' : 'Everything on this card was confirmed.';
+    $('#mName').value = r.name; $('#mType').value = r.type; $('#mCert').value = r.cert; $('#mExp').value = r.exp;
+    FIELDS.forEach(function (f) {
+      var box = $('.f2[data-f="' + f + '"]'), on = r.flags && r.flags[f];
+      box.className = 'f2' + (on ? ' check' : '');
+      $('label span', box).textContent = on ? 'Please confirm' : '';
+    });
+    var list = reviewList(), idx = list.indexOf(r);
+    $('#mCount').textContent = list.length > 1 ? (idx + 1) + ' of ' + list.length : '';
+    $('#mPrev').disabled = idx <= 0; $('#mNext').disabled = idx < 0 || idx >= list.length - 1;
+    $('#modal').className = 'modal show'; $('#modal').setAttribute('aria-hidden', 'false');
+  };
+  var closeReview = function () { state.reviewId = null; $('#modal').className = 'modal'; $('#modal').setAttribute('aria-hidden', 'true'); renderRoster(); };
+  var pullReview = function () {
+    var r = rowById(state.reviewId); if (!r) return null;
+    r.name = $('#mName').value.trim().toUpperCase(); r.type = $('#mType').value; r.cert = $('#mCert').value.trim(); r.exp = $('#mExp').value;
+    return r;
+  };
+  var stepReview = function (dir) {
+    var r = pullReview(); save();
+    var list = reviewList(), idx = list.indexOf(r), nx = list[idx + dir];
+    if (nx) openReview(nx.id); else closeReview();
+  };
+
+  // ---------- exports ----------
+  var safeName = function () { return ((state.settings.client || 'Fire_Guard') + '_' + (state.settings.date || todayISO()) + '_Roster').replace(/[^a-z0-9\-]+/gi, '_').replace(/_+/g, '_'); };
+  var download = async function (blob, name) {
+    // inside a Claude preview the page must ask the viewer before saving a file
+    if (window.claude && typeof window.claude.use === 'function') {
+      try {
+        var d = await window.claude.use('downloads');
+        if (d) { await d.save({ filename: name, data: blob }); return; }
+      } catch (e) { if (e && (e.code === 'declined' || e.code === 'rate_limited')) return; }
+    }
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  var csvCell = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var exportCSV = function () {
+    var rows = visibleRowsForExport();
+    var out = [['#', 'Full Name', 'Type', 'Certificate #', 'Expiration Date', 'Status'].join(',')];
+    rows.forEach(function (r, i) { out.push([i + 1, csvCell(r.name), csvCell(r.type), csvCell(r.cert), csvCell(fmtDate(r.exp)), csvCell(status(r).csv)].join(',')); });
+    download(new Blob([out.join('\n')], { type: 'text/csv' }), safeName() + '.csv');
+  };
+  var visibleRowsForExport = function () { var f = state.filter; state.filter = 'all'; var v = visibleRows(); state.filter = f; return v; };
+  var exportPDF = function () {
+    if (!window.jspdf) { showErr('The PDF maker could not load. Check the internet connection, then reload this page.'); return; }
+    var rows = visibleRowsForExport();
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'letter' });
+    var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 14;
+    var INK = [18, 30, 58], IND = [59, 75, 143], MUTED = [139, 147, 165], BODY = [73, 82, 104];
+    var company = state.settings.company || 'Ares Security Consulting', client = state.settings.client || '';
+    var head = function (title) {
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); doc.setTextColor.apply(doc, IND);
+      doc.text(company.toUpperCase(), M, 14, { charSpace: 0.6 });
+      doc.setFont('helvetica', 'normal'); doc.setTextColor.apply(doc, MUTED);
+      doc.text(fmtLong(state.settings.date), W - M, 14, { align: 'right' });
+      doc.setDrawColor.apply(doc, INK); doc.setLineWidth(0.9); doc.line(M, 17, W - M, 17);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(20); doc.setTextColor.apply(doc, INK);
+      doc.text(title[0], M, 28);
+      var w0 = doc.getTextWidth(title[0] + ' ');
+      doc.setTextColor.apply(doc, IND); doc.text(title[1], M + w0, 28);
+    };
+    var foot = function () {
+      var n = doc.internal.getNumberOfPages();
+      for (var p = 1; p <= n; p++) {
+        doc.setPage(p);
+        doc.setDrawColor.apply(doc, INK); doc.setLineWidth(0.5); doc.line(M, H - 13, W - M, H - 13);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor.apply(doc, MUTED);
+        doc.text(company + (client ? '  |  ' + client : ''), M, H - 8);
+        doc.text('Page ' + p + ' of ' + n, W - M, H - 8, { align: 'right' });
+      }
+    };
+    head(['Fire Guard', 'Roster']);
+    // two info panels
+    var panel = function (x, w, label, value) {
+      doc.setFillColor(247, 248, 251); doc.roundedRect(x, 34, w, 17, 2.5, 2.5, 'F');
+      doc.setFillColor.apply(doc, INK); doc.rect(x, 34, 1.4, 17, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7); doc.setTextColor.apply(doc, MUTED); doc.text(label.toUpperCase(), x + 5, 40, { charSpace: 0.5 });
+      doc.setFontSize(12); doc.setTextColor.apply(doc, INK); doc.text(String(value || ' '), x + 5, 47, { maxWidth: w - 8 });
+    };
+    var pw = (W - M * 2 - 8) / 3;
+    panel(M, pw + 16, 'Prepared for', client || 'Client');
+    panel(M + pw + 20, pw - 8, 'Event date', fmtLong(state.settings.date));
+    panel(M + pw * 2 + 16, pw - 8, 'Personnel', rows.length + (rows.length === 1 ? ' fire guard' : ' fire guards'));
+    doc.autoTable({
+      startY: 58, margin: { left: M, right: M, bottom: 18 },
+      head: [['#', 'FULL NAME', 'TYPE', 'CERTIFICATE #', 'EXPIRES']],
+      body: rows.map(function (r, i) { return [String(i + 1).padStart(2, '0'), r.name, r.type, r.cert, fmtDate(r.exp)]; }),
+      theme: 'plain',
+      styles: { font: 'helvetica', fontSize: 10.5, cellPadding: { top: 3.2, bottom: 3.2, left: 2.5, right: 2.5 }, textColor: INK, lineWidth: 0 },
+      headStyles: { fontSize: 7.5, textColor: MUTED, fontStyle: 'bold' },
+      didDrawCell: function (d) {
+        // hairline under each row only
+        var head = d.section === 'head';
+        doc.setDrawColor.apply(doc, head ? [213, 217, 227] : [232, 234, 240]); doc.setLineWidth(head ? 0.4 : 0.25);
+        doc.line(d.cell.x, d.cell.y + d.cell.height, d.cell.x + d.cell.width, d.cell.y + d.cell.height);
+      },
+      columnStyles: { 0: { cellWidth: 12, textColor: [175, 187, 214], fontStyle: 'bold' }, 1: { fontStyle: 'bold' }, 2: { cellWidth: 22 }, 3: { cellWidth: 40 }, 4: { cellWidth: 32 } }
+    });
+    // card copies, two across
+    var withImg = rows.filter(function (r) { return state.images[r.id]; });
+    if (withImg.length) {
+      doc.addPage(); head(['Card', 'Copies']);
+      var cw = (W - M * 2 - 8) / 2, ch = cw * (1000 / 1480), x = M, y = 36, col = 0;
+      withImg.forEach(function (r) {
+        if (y + ch + 12 > H - 18) { doc.addPage(); head(['Card', 'Copies']); y = 36; col = 0; x = M; }
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor.apply(doc, INK);
+        doc.text((r.name || 'Guard') + (r.type ? '  ' + r.type : ''), x, y, { maxWidth: cw });
+        try { doc.addImage(state.images[r.id], 'JPEG', x, y + 2.5, cw, ch, undefined, 'FAST'); } catch (e) {}
+        doc.setDrawColor(213, 217, 227); doc.setLineWidth(0.2); doc.roundedRect(x, y + 2.5, cw, ch, 2, 2);
+        col++;
+        if (col % 2) x = M + cw + 8; else { x = M; y += ch + 12; }
       });
     }
-    return sortableItems;
-  }, [guards, sortConfig]);
-  const requestSort = key => {
-    let direction = 'ascending';
-    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
-      direction = 'descending';
-    }
-    setSortConfig({
-      key,
-      direction
-    });
-  };
-  const SortIcon = ({
-    colKey
-  }) => {
-    if (sortConfig.key !== colKey) return /*#__PURE__*/React.createElement("span", {
-      className: "sort-icon text-gray-300"
-    }, /*#__PURE__*/React.createElement(ChevronDown, null));
-    return sortConfig.direction === 'ascending' ? /*#__PURE__*/React.createElement("span", {
-      className: "sort-icon sort-active"
-    }, /*#__PURE__*/React.createElement(ChevronUp, null)) : /*#__PURE__*/React.createElement("span", {
-      className: "sort-icon sort-active"
-    }, /*#__PURE__*/React.createElement(ChevronDown, null));
+    foot();
+    download(doc.output('blob'), safeName() + '.pdf');
   };
 
-  // --- [#1] DRAG-AND-DROP REORDER HANDLERS ---
-  const handleRowDragStart = (e, index) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    // Make drag image semi-transparent
-    if (e.target.closest('tr')) {
-      e.target.closest('tr').classList.add('dragging');
-    }
-  };
-  const handleRowDragOver = (e, index) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex === null || draggedIndex === index) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const midY = rect.top + rect.height / 2;
-    const pos = e.clientY < midY ? 'top' : 'bottom';
-    setDragOverIndex(index);
-    setDragOverPosition(pos);
-  };
-  const handleRowDragEnd = () => {
-    // Clean up all drag states
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setDragOverPosition(null);
-    document.querySelectorAll('tr.dragging').forEach(el => el.classList.remove('dragging'));
-  };
-  const handleRowDrop = (e, dropIndex) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      handleRowDragEnd();
-      return;
-    }
+  // ---------- events ----------
+  var bind = function () {
+    var drop = $('#drop'), file = $('#file'), cam = $('#cam');
+    $('#pick').addEventListener('click', function (e) { e.stopPropagation(); file.click(); });
+    $('#snap').addEventListener('click', function (e) { e.stopPropagation(); cam.click(); });
+    $('#manual').addEventListener('click', function (e) { e.stopPropagation(); addManual(); });
+    drop.addEventListener('click', function () { file.click(); });
+    drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } });
+    file.addEventListener('change', function () { addFiles(file.files); file.value = ''; });
+    cam.addEventListener('change', function () { addFiles(cam.files); cam.value = ''; });
+    ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); drop.classList.add('over'); } }); });
+    ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function () { drop.classList.remove('over'); }); });
+    // dropping anywhere on the page works
+    window.addEventListener('dragover', function (e) { if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) e.preventDefault(); });
+    window.addEventListener('drop', function (e) { if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) { e.preventDefault(); addFiles(e.dataTransfer.files); } });
+    window.addEventListener('paste', function (e) { var f = e.clipboardData && e.clipboardData.files; if (f && f.length) addFiles(f); });
 
-    // Clear any active sort when manually reordering
-    setSortConfig({
-      key: null,
-      direction: 'ascending'
+    ['client', 'date', 'company'].forEach(function (k) {
+      var el = $('#' + k); el.value = state.settings[k] || '';
+      el.addEventListener('input', function () { state.settings[k] = el.value; save(); if (k === 'company') $('#brandLine').textContent = el.value || 'Ares Security'; if (k !== 'company') renderRoster(); });
     });
-    setGuards(prev => {
-      const updated = [...prev];
-      const [dragged] = updated.splice(draggedIndex, 1);
-      let insertAt = dropIndex;
-      // Adjust if we're dropping below the midpoint
-      if (dragOverPosition === 'bottom') {
-        insertAt = draggedIndex < dropIndex ? dropIndex : dropIndex + 1;
-      } else {
-        insertAt = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
-      }
-      updated.splice(insertAt, 0, dragged);
-      return updated;
-    });
-    handleRowDragEnd();
-  };
+    $('#brandLine').textContent = state.settings.company || 'Ares Security';
 
-  // Handle file upload area Drag Events
-  const handleDrag = e => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  };
-  const handleDrop = async e => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      await processFiles(Array.from(e.dataTransfer.files));
-    }
-  };
-  const handleFileInput = async e => {
-    if (e.target.files && e.target.files.length > 0) {
-      await processFiles(Array.from(e.target.files));
-      // [#8] Reset file input so re-uploading the same file triggers onChange
-      e.target.value = '';
-    }
-  };
-  const handleManualAdd = () => {
-    const newGuard = {
-      id: Date.now(),
-      name: "New Guard",
-      type: "F-04",
-      cert: "",
-      exp: "",
-      confidence: 100,
-      // Manual = full confidence
-      originalImage: null
+    $('#progress').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-pact]'); if (!b) return;
+      var id = b.closest('[data-pid]').getAttribute('data-pid');
+      state.photos = state.photos.filter(function (p) { return p.id !== id; });
+      renderProgress();
+      if (b.getAttribute('data-pact') === 'hand') addManual();
+    });
+    $('#chips').addEventListener('click', function (e) { var b = e.target.closest('[data-filter]'); if (!b) return; state.filter = b.getAttribute('data-filter'); renderRoster(); });
+    $('#checkBanner').addEventListener('click', function (e) { if (e.target.id !== 'reviewAll') return; var r = state.rows.find(needsCheck); if (r) openReview(r.id); });
+
+    var roster = $('#roster');
+    roster.addEventListener('click', function (e) {
+      var th = e.target.closest('[data-sort]');
+      if (th) { var k = th.getAttribute('data-sort'); if (state.sort.key === k) { if (state.sort.dir > 0) state.sort.dir = -1; else state.sort = { key: null, dir: 1 }; } else state.sort = { key: k, dir: 1 }; renderRoster(); return; }
+      var act = e.target.closest('[data-act]'); if (!act) return;
+      var id = act.closest('tr').getAttribute('data-id');
+      if (act.getAttribute('data-act') === 'remove') { state.rows = state.rows.filter(function (r) { return r.id !== id; }); imgDel(id); save(); renderRoster(); }
+      else openReview(id);
+    });
+    var edit = function (e) {
+      var f = e.target.getAttribute && e.target.getAttribute('data-f'); if (!f) return;
+      var tr = e.target.closest('tr'), r = rowById(tr.getAttribute('data-id')); if (!r) return;
+      r[f] = f === 'name' ? e.target.value.toUpperCase() : e.target.value.trim();
+      if (r.flags) r.flags[f] = false;                    // a person typed it: settled
+      e.target.closest('td').classList.remove('check');
+      save();
+      if (e.type === 'change') renderRoster(); else renderSummary();
     };
-    setGuards(prev => [newGuard, ...prev]);
+    roster.addEventListener('input', edit); roster.addEventListener('change', edit);
+    // drag to reorder
+    var dragId = null;
+    roster.addEventListener('dragstart', function (e) { var tr = e.target.closest && e.target.closest('tr[data-id]'); if (!tr || /INPUT|SELECT/.test(e.target.tagName)) return; dragId = tr.getAttribute('data-id'); tr.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', dragId); } catch (x) {} });
+    roster.addEventListener('dragover', function (e) { if (!dragId) return; var tr = e.target.closest('tr[data-id]'); if (!tr) return; e.preventDefault(); Array.prototype.forEach.call(roster.querySelectorAll('.dropabove'), function (n) { n.classList.remove('dropabove'); }); tr.classList.add('dropabove'); });
+    roster.addEventListener('drop', function (e) {
+      if (!dragId) return; var tr = e.target.closest('tr[data-id]'); e.preventDefault(); e.stopPropagation();
+      if (tr) { var to = tr.getAttribute('data-id'); if (to !== dragId) { var from = state.rows.findIndex(function (r) { return r.id === dragId; }); var item = state.rows.splice(from, 1)[0]; var ti = state.rows.findIndex(function (r) { return r.id === to; }); state.rows.splice(ti, 0, item); save(); } }
+      dragId = null; renderRoster();
+    });
+    roster.addEventListener('dragend', function () { dragId = null; renderRoster(); });
+
+    $('#clear').addEventListener('click', function () { $('#clearConfirm').classList.add('show'); });
+    $('#clearNo').addEventListener('click', function () { $('#clearConfirm').classList.remove('show'); });
+    $('#clearYes').addEventListener('click', function () { state.rows = []; state.photos = state.photos.filter(function (p) { return p.status === 'reading' || p.status === 'waiting'; }); imgClear(); save(); $('#clearConfirm').classList.remove('show'); state.filter = 'all'; renderProgress(); renderRoster(); });
+    $('#pdf').addEventListener('click', exportPDF);
+    $('#csv').addEventListener('click', exportCSV);
+
+    $('#mOk').addEventListener('click', function () { var r = pullReview(); if (r) { r.flags = { name: false, type: false, cert: false, exp: false }; } stepReviewAfterOk(r); });
+    $('#mClose').addEventListener('click', function () { pullReview(); save(); closeReview(); });
+    $('#mPrev').addEventListener('click', function () { stepReview(-1); });
+    $('#mNext').addEventListener('click', function () { stepReview(1); });
+    $('#mRemove').addEventListener('click', function () { var id = state.reviewId; state.rows = state.rows.filter(function (r) { return r.id !== id; }); imgDel(id); save(); closeReview(); });
+    $('#modal').addEventListener('click', function (e) { if (e.target.id === 'modal') { pullReview(); save(); closeReview(); } });
+    window.addEventListener('keydown', function (e) { if (!state.reviewId) return; if (e.key === 'Escape') { pullReview(); save(); closeReview(); } });
   };
-  const clearAll = () => {
-    if (confirm("Are you sure you want to clear the entire list? This cannot be undone.")) {
-      setGuards([]);
-      localStorage.removeItem(STORAGE_KEY);
+  var stepReviewAfterOk = function (r) {
+    save();
+    var nx = state.rows.find(function (x) { return x !== r && needsCheck(x); });
+    if (nx) openReview(nx.id); else closeReview();
+  };
+
+  // ---------- start ----------
+  var start = async function () {
+    try { var s = JSON.parse(localStorage.getItem(LS_SET) || 'null'); if (s) { state.settings.company = s.company || state.settings.company; state.settings.client = s.client || ''; if (s.date) state.settings.date = s.date; } } catch (e) {}
+    try { var r = JSON.parse(localStorage.getItem(LS_ROWS) || '[]'); if (Array.isArray(r)) state.rows = r.filter(function (x) { return x && x.id; }); } catch (e) {}
+    bind(); renderRoster(); renderProgress();
+    await idbOpen();
+    if (idb && state.rows.length) {
+      await Promise.all(state.rows.map(function (row) { return idbDo('readonly', function (st) { return st.get(row.id); }).then(function (d) { if (d) state.images[row.id] = d; }); }));
+      renderRoster();
     }
+    if (!window.Tesseract) showErr('The scanner could not load. Check the internet connection, then reload this page. You can still add guards by hand.');
   };
-
-  // --- PROCESSING LOGIC ---
-  const processFiles = async files => {
-    setIsProcessing(true);
-    setProgress("Initializing Scanner Engine...");
-    try {
-      const worker = await Tesseract.createWorker('eng');
-      const newGuards = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (file.type === "application/pdf") {
-          setProgress(`Processing PDF: ${file.name}...`);
-          try {
-            const extracted = await processPDF(file, worker);
-            newGuards.push(...extracted);
-          } catch (err) {
-            console.error(err);
-            alert(`Error processing ${file.name}: ${err.message}`);
-          }
-        } else if (file.type.startsWith("image/")) {
-          setProgress(`Processing Image: ${file.name}...`);
-          try {
-            const extracted = await processImage(file, worker);
-            newGuards.push(...extracted);
-          } catch (err) {
-            console.error(err);
-          }
-        }
-      }
-      setGuards(prev => [...prev, ...newGuards]);
-      setProgress("Cleaning up...");
-      await worker.terminate();
-    } catch (err) {
-      console.error("Scanner initialization failed:", err);
-      alert("Failed to start the scanner engine.");
-    } finally {
-      setIsProcessing(false);
-      setProgress("");
-    }
-  };
-
-  // --- PDF NATIVE TEXT EXTRACTION (instant, 100% accurate when available) ---
-  const extractPdfTextLayer = async page => {
-    try {
-      const textContent = await page.getTextContent();
-      const text = textContent.items.map(item => item.str).join(' ');
-      // Only trust if there's meaningful content (not just whitespace/headers)
-      if (text.replace(/\s+/g, '').length > 20) return text;
-      return null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  // --- MULTI-PASS OCR: Run multiple filter presets, pick best confidence ---
-  const OCR_PRESETS = [{
-    name: 'standard',
-    filter: 'grayscale(100%) contrast(150%) brightness(110%)'
-  }, {
-    name: 'high-contrast',
-    filter: 'grayscale(100%) contrast(200%) brightness(120%)'
-  }, {
-    name: 'dark-boost',
-    filter: 'grayscale(100%) contrast(180%) brightness(140%)'
-  }, {
-    name: 'sharp',
-    filter: 'grayscale(100%) contrast(170%) brightness(100%) saturate(0)'
-  }];
-  const multiPassOCR = async (sourceCanvas, worker) => {
-    let bestResult = {
-      text: '',
-      confidence: 0
-    };
-    for (const preset of OCR_PRESETS) {
-      const ocrCanvas = document.createElement('canvas');
-      ocrCanvas.width = sourceCanvas.width;
-      ocrCanvas.height = sourceCanvas.height;
-      const ocrCtx = ocrCanvas.getContext('2d');
-      ocrCtx.filter = preset.filter;
-      ocrCtx.drawImage(sourceCanvas, 0, 0);
-      const ocrImg = ocrCanvas.toDataURL('image/jpeg', 0.85);
-      const {
-        data
-      } = await worker.recognize(ocrImg);
-      const confidence = Math.round(data.confidence);
-
-      // Keep the result with highest confidence
-      if (confidence > bestResult.confidence) {
-        bestResult = {
-          text: data.text,
-          confidence
-        };
-      }
-      ocrCanvas.width = 0;
-      ocrCanvas.height = 0;
-
-      // If we hit 85%+ confidence, no need to try more passes
-      if (confidence >= 85) break;
-    }
-    return bestResult;
-  };
-  const processPDF = async (file, worker) => {
-    try {
-      const arrayBuffer = await readFileAsArrayBuffer(file);
-      const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-      const results = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        setProgress(`Scanning Page ${i} of ${pdf.numPages}...`);
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({
-          scale: 2.0
-        });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
-        const displayImg = canvas.toDataURL('image/jpeg', 0.7);
-
-        // STRATEGY 1: Try native PDF text layer first (instant + perfect)
-        let extractedText = await extractPdfTextLayer(page);
-        let confidence = 100;
-
-        // STRATEGY 2: If no embedded text, run multi-pass OCR
-        if (!extractedText) {
-          setProgress(`OCR Scanning Page ${i} of ${pdf.numPages}...`);
-          const ocrResult = await multiPassOCR(canvas, worker);
-          extractedText = ocrResult.text;
-          confidence = ocrResult.confidence;
-        } else {
-          setProgress(`Text extracted from Page ${i} (native)...`);
-        }
-        const foundGuards = parseText(extractedText);
-        foundGuards.forEach(info => {
-          if (info.name !== "UNKNOWN" || info.type !== "N/A" || info.cert !== "N/A") {
-            results.push({
-              ...info,
-              id: Date.now() + Math.random(),
-              originalImage: displayImg,
-              confidence
-            });
-          }
-        });
-        canvas.width = 0;
-        canvas.height = 0;
-      }
-      return results;
-    } catch (error) {
-      console.error("PDF Processing Error:", error);
-      throw new Error("Could not read PDF. " + error.message);
-    }
-  };
-  const processImage = async (file, worker) => {
-    const reader = new FileReader();
-    return new Promise((resolve, reject) => {
-      reader.onload = async e => {
-        const img = new Image();
-        img.onload = async () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          const displayImg = canvas.toDataURL('image/jpeg', 0.7);
-
-          // Multi-pass OCR for best accuracy
-          const ocrResult = await multiPassOCR(canvas, worker);
-          const foundGuards = parseText(ocrResult.text);
-          let results = foundGuards.map(info => ({
-            ...info,
-            id: Date.now() + Math.random(),
-            originalImage: displayImg,
-            confidence: ocrResult.confidence
-          }));
-          if (results.length === 0) {
-            results.push({
-              name: "",
-              type: "F-04",
-              cert: "",
-              exp: "",
-              id: Date.now() + Math.random(),
-              originalImage: displayImg,
-              confidence: 0
-            });
-          }
-          canvas.width = 0;
-          canvas.height = 0;
-          resolve(results);
-        };
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  // --- ENHANCED PARSER: Multiple regex strategies per field ---
-  const parseText = text => {
-    const results = [];
-    const cleanText = text.replace(/[\r\n]+/g, '\n');
-
-    // Split by known FDNY cert headers to handle multiple certs per page
-    let chunks = cleanText.split(/(?:CERTIFICATE\s+ISSUED\s+BY\s+FDNY|FIRE\s+DEPARTMENT\s+(?:OF\s+)?(?:THE\s+)?(?:CITY\s+OF\s+)?NEW\s+YORK)/i);
-    if (chunks.length > 1 && chunks[0].trim().length < 10) {
-      chunks.shift();
-    }
-    if (chunks.length === 0) chunks = [cleanText];
-    const convertToISO = d => {
-      const parts = d.split('/');
-      if (parts.length === 3) {
-        const [m, day, y] = parts;
-        const month = m.padStart(2, '0');
-        const dd = day.padStart(2, '0');
-        const year = y.length === 2 ? '20' + y : y;
-        return `${year}-${month}-${dd}`;
-      }
-      return d;
-    };
-
-    // Clean up OCR artifacts from a name string
-    const cleanName = raw => {
-      return raw.replace(/[^A-Za-z\s\.\-']/g, '') // Strip digits, special chars
-      .replace(/\s{2,}/g, ' ') // Collapse multiple spaces
-      .trim().split('\n')[0] // Only first line
-      .trim();
-    };
-    chunks.forEach(chunk => {
-      let data = {
-        name: "UNKNOWN",
-        type: "N/A",
-        cert: "N/A",
-        exp: "N/A"
-      };
-      let hasData = false;
-
-      // ============ NAME EXTRACTION (multiple strategies) ============
-      const nameStrategies = [
-      // Strategy 1: "NAME" keyword followed by text
-      () => {
-        const m = chunk.match(/NAME\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
-        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-        return null;
-      },
-      // Strategy 2: "NAME" on its own line, name on next line
-      () => {
-        const m = chunk.match(/NAME\s*\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
-        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-        return null;
-      },
-      // Strategy 3: After ISSUED line
-      () => {
-        const m = chunk.match(/ISSUED.*?\n\s*([A-Z][A-Za-z\s\.\-']+)/i);
-        if (m && m[1].trim().length >= 5) return cleanName(m[1]);
-        return null;
-      },
-      // Strategy 4: "NANE" or "MAME" (common OCR misreads of NAME)
-      () => {
-        const m = chunk.match(/(?:NANE|MAME|NAМЕ)\s*[:\-\.\s]\s*([A-Z][A-Za-z\s\.\-']+)/i);
-        if (m && m[1].trim().length >= 3) return cleanName(m[1]);
-        return null;
-      }];
-      for (const strategy of nameStrategies) {
-        const name = strategy();
-        if (name && name.length >= 3) {
-          data.name = name;
-          hasData = true;
-          break;
-        }
-      }
-
-      // ============ CERT # EXTRACTION (multiple strategies) ============
-      const certStrategies = [
-      // Strategy 1: "CERT.#" or "CERT #" followed by digits
-      () => {
-        const m = chunk.match(/CERT[\.\s]*#?\s*(\d{7,8})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 2: "NO." or "NO #" followed by digits
-      () => {
-        const m = chunk.match(/NO[\.\s]*#?\s*(\d{7,8})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 3: "CERTIFICATE" near a number block
-      () => {
-        const m = chunk.match(/CERTIFICATE[\s\S]{0,30}?(\d{7,8})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 4: "GERT" or "CERI" (OCR misreads of CERT)
-      () => {
-        const m = chunk.match(/(?:GERT|CERI|CERTI?)[\.\s]*#?\s*(\d{7,8})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 5: Standalone 8-digit number (likely cert if other fields found)
-      () => {
-        const m = chunk.match(/\b(\d{8})\b/);
-        return m ? m[1] : null;
-      }];
-      for (const strategy of certStrategies) {
-        const cert = strategy();
-        if (cert) {
-          data.cert = cert;
-          hasData = true;
-          break;
-        }
-      }
-
-      // ============ EXPIRATION DATE EXTRACTION (multiple strategies) ============
-      const dateStrategies = [
-      // Strategy 1: "EXPIRES" keyword
-      () => {
-        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 2: "EXP" abbreviation
-      () => {
-        const m = chunk.match(/EXP[\.\s]*[:\-]?\s*(\d{1,2}\/\d{1,2}\/\d{2,4})/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 3: Date after ISSUED date (second date = expiration)
-      () => {
-        const dates = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/g);
-        // If two dates found, second is typically expiration
-        if (dates && dates.length >= 2) return dates[1];
-        return null;
-      },
-      // Strategy 4: Any date as last resort
-      () => {
-        const m = chunk.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
-        return m ? m[1] : null;
-      },
-      // Strategy 5: Dates with dashes (MM-DD-YYYY)
-      () => {
-        const m = chunk.match(/EXPIR(?:ES|ATION)\s*[:\-]?\s*(\d{1,2})-(\d{1,2})-(\d{2,4})/i);
-        if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-        return null;
-      }];
-      for (const strategy of dateStrategies) {
-        const dateStr = strategy();
-        if (dateStr) {
-          data.exp = convertToISO(dateStr);
-          hasData = true;
-          break;
-        }
-      }
-
-      // ============ TYPE EXTRACTION (multiple strategies) ============
-      const typeStrategies = [
-      // Strategy 1: "CAT." or "CAT" followed by F0x
-      () => {
-        const m = chunk.match(/CAT[\.\s]*F[\s\-]?0?([1-4])/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 2: Standalone F-0x or F0x
-      () => {
-        const m = chunk.match(/\bF[\s\-]?0?([1-4])\b/i);
-        return m ? m[1] : null;
-      },
-      // Strategy 3: "TYPE" keyword near Fitness/Impairment/etc
-      () => {
-        if (/TYPE\s*(?:Fitness|Fire\s*Guard)/i.test(chunk)) return '4';
-        return null;
-      },
-      // Strategy 4: Certificate description text
-      () => {
-        if (/INDOOR.*OUTDOOR.*ASSEMBLY/i.test(chunk)) return '4'; // F-04
-        if (/TORCH\s*OPERATION/i.test(chunk)) return '1'; // F-01
-        if (/SHELTERING/i.test(chunk)) return '2'; // F-02
-        if (/INDOOR\s*PLACE.*ASSEMBLY/i.test(chunk) && !/OUTDOOR/i.test(chunk)) return '3'; // F-03
-        return null;
-      }];
-      for (const strategy of typeStrategies) {
-        const typeNum = strategy();
-        if (typeNum) {
-          data.type = `F-0${typeNum}`;
-          hasData = true;
-          break;
-        }
-      }
-      if (hasData) {
-        results.push(data);
-      }
-    });
-    return results;
-  };
-
-  // --- [#6] CSV GENERATION with proper escaping ---
-  const generateCSV = () => {
-    const csvRows = [];
-    csvRows.push(["#", "Full Name", "Type", "Certificate #", "Expiration Date", "Status"].join(","));
-    sortedGuards.forEach((g, index) => {
-      const status = getStatus(g.exp).label;
-      const row = [index + 1, csvEscape(g.name), csvEscape(g.type), csvEscape(g.cert), csvEscape(formatShortDate(g.exp)), csvEscape(status)];
-      csvRows.push(row.join(","));
-    });
-    const csvString = csvRows.join("\n");
-    const blob = new Blob([csvString], {
-      type: 'text/csv'
-    });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
-    a.setAttribute('download', `${safeClientName}_${eventDate}_Roster.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  // --- [#4] PDF GENERATION with Ares branding ---
-  const generatePDF = () => {
-    const {
-      jsPDF
-    } = window.jspdf;
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    // --- Branded Header ---
-    // Navy bar across top
-    doc.setFillColor(...BRAND.navyRGB);
-    doc.rect(0, 0, pageWidth, 28, 'F');
-
-    // Company name in white
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(companyName, pageWidth / 2, 13, {
-      align: "center"
-    });
-
-    // Subtitle
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text("Fireguard Roster & Compliance Report", pageWidth / 2, 22, {
-      align: "center"
-    });
-
-    // Reset text color
-    doc.setTextColor(0, 0, 0);
-
-    // Blue accent line
-    doc.setDrawColor(...BRAND.blueRGB);
-    doc.setLineWidth(0.8);
-    doc.line(14, 30, pageWidth - 14, 30);
-
-    // Client / Date info
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
-    doc.text(`Client: ${clientName}`, 14, 40);
-    doc.text(`Date: ${formatDisplayDate(eventDate)}`, 14, 47);
-    doc.text(`Total Personnel: ${sortedGuards.length}`, 14, 54);
-
-    // Section header
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(...BRAND.navyRGB);
-    doc.text("Personnel Summary", 14, 66);
-    doc.setTextColor(0, 0, 0);
-    const tableBody = sortedGuards.map((g, index) => [index + 1, g.name, g.type, g.cert, formatShortDate(g.exp)]);
-    doc.autoTable({
-      startY: 70,
-      head: [['#', 'Full Name', 'Type', 'Certificate #', 'Expiration']],
-      body: tableBody,
-      theme: 'striped',
-      headStyles: {
-        fillColor: BRAND.navyRGB,
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        fontSize: 10
-      },
-      alternateRowStyles: {
-        fillColor: [245, 247, 250]
-      },
-      styles: {
-        fontSize: 10,
-        cellPadding: 4
-      },
-      columnStyles: {
-        0: {
-          cellWidth: 15,
-          halign: 'center'
-        }
-      }
-    });
-
-    // Section 2: Scans — always start on a fresh page
-    doc.addPage();
-    doc.setFillColor(...BRAND.navyRGB);
-    doc.rect(0, 0, pageWidth, 12, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
-      align: "center"
-    });
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...BRAND.navyRGB);
-    doc.text("Digital Verification (Card Scans)", 14, 24);
-    doc.setTextColor(0, 0, 0);
-    let yPos = 34;
-    sortedGuards.forEach((guard, index) => {
-      if (yPos > 250) {
-        doc.addPage();
-        // Repeat header bar on new pages
-        doc.setFillColor(...BRAND.navyRGB);
-        doc.rect(0, 0, pageWidth, 12, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
-          align: "center"
-        });
-        doc.setTextColor(0, 0, 0);
-        yPos = 22;
-      }
-      const guardLabel = `#${index + 1}: ${guard.name} (${guard.type})`;
-      if (guard.originalImage) {
-        try {
-          const imgProps = doc.getImageProperties(guard.originalImage);
-          const pdfWidth = 150;
-          const pdfHeight = imgProps.height * pdfWidth / imgProps.width;
-          // Check if label + image fit on current page; if not, move everything to next page
-          if (yPos + 5 + pdfHeight > 280) {
-            doc.addPage();
-            doc.setFillColor(...BRAND.navyRGB);
-            doc.rect(0, 0, pageWidth, 12, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(8);
-            doc.text(`${companyName}  |  ${clientName}  |  Fireguard Roster`, pageWidth / 2, 8, {
-              align: "center"
-            });
-            doc.setTextColor(0, 0, 0);
-            yPos = 22;
-          }
-          // Print label once, only on the page where the image will actually go
-          doc.setFontSize(10);
-          doc.setFont("helvetica", "bold");
-          doc.text(guardLabel, 14, yPos);
-          doc.addImage(guard.originalImage, 'JPEG', 14, yPos + 5, pdfWidth, pdfHeight);
-          yPos += pdfHeight + 20;
-        } catch (e) {
-          doc.text("[Image Error]", 14, yPos + 10);
-          yPos += 30;
-        }
-      } else {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.text(guardLabel, 14, yPos);
-        doc.setFont("helvetica", "italic");
-        doc.setFontSize(9);
-        doc.text("[No Digital Verification Image Available]", 14, yPos + 10);
-        doc.setFont("helvetica", "bold");
-        yPos += 30;
-      }
-    });
-
-    // Footer on last page
-    const lastPageHeight = doc.internal.pageSize.getHeight();
-    doc.setDrawColor(...BRAND.blueRGB);
-    doc.setLineWidth(0.5);
-    doc.line(14, lastPageHeight - 15, pageWidth - 14, lastPageHeight - 15);
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(120, 120, 120);
-    doc.text(`Generated by ${companyName}  |  ${formatDisplayDate(eventDate)}`, pageWidth / 2, lastPageHeight - 10, {
-      align: "center"
-    });
-    const safeClientName = clientName.replace(/[^a-z0-9]/gi, '_').replace(/_+/g, '_');
-    doc.save(`${safeClientName}_${eventDate}_Roster.pdf`);
-  };
-  const updateGuard = (id, field, value) => {
-    setGuards(guards.map(g => g.id === id ? {
-      ...g,
-      [field]: value
-    } : g));
-  };
-  const removeGuard = id => {
-    setGuards(guards.filter(g => g.id !== id));
-  };
-  return /*#__PURE__*/React.createElement("div", {
-    className: "min-h-screen p-8 max-w-6xl mx-auto"
-  }, /*#__PURE__*/React.createElement(ImageModal, {
-    src: selectedImage,
-    onClose: () => setSelectedImage(null)
-  }), /*#__PURE__*/React.createElement("div", {
-    className: "flex justify-between items-center mb-8"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex-1"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-3 mb-1"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-white p-2 rounded-lg font-bold text-xl",
-    style: {
-      backgroundColor: BRAND.navy
-    }
-  }, companyInitials), /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: companyName,
-    onChange: e => setCompanyName(e.target.value),
-    className: "text-3xl font-bold text-gray-900 bg-transparent border-none focus:ring-2 focus:ring-blue-200 rounded px-2 w-full max-w-xl placeholder-gray-300",
-    placeholder: "Enter Company Name"
-  })), /*#__PURE__*/React.createElement("p", {
-    className: "text-gray-500 ml-1"
-  }, "Fireguard Roster Automation")), /*#__PURE__*/React.createElement("div", {
-    className: "text-right flex flex-col items-end"
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "text",
-    value: clientName,
-    onChange: e => setClientName(e.target.value),
-    className: "block text-right border-none bg-transparent font-semibold text-lg focus:ring-0 mb-1",
-    placeholder: "Client Name"
-  }), /*#__PURE__*/React.createElement("input", {
-    type: "date",
-    value: eventDate,
-    onChange: e => setEventDate(e.target.value),
-    className: "block text-right border-none bg-transparent text-gray-500 focus:ring-0 text-sm"
-  }))), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-1 lg:grid-cols-4 gap-8"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "lg:col-span-1 space-y-4"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: `border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400 bg-white'}`,
-    onDragEnter: handleDrag,
-    onDragLeave: handleDrag,
-    onDragOver: handleDrag,
-    onDrop: handleDrop,
-    onClick: () => document.getElementById('fileInput').click()
-  }, /*#__PURE__*/React.createElement("input", {
-    id: "fileInput",
-    type: "file",
-    multiple: true,
-    accept: ".pdf,.jpg,.jpeg,.png",
-    className: "hidden",
-    onChange: handleFileInput
-  }), isProcessing ? /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col items-center animate-pulse"
-  }, /*#__PURE__*/React.createElement(Loader2, {
-    className: "h-10 w-10 text-blue-500 animate-spin mb-3"
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm font-medium text-gray-600"
-  }, progress)) : /*#__PURE__*/React.createElement("div", {
-    className: "flex flex-col items-center"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-blue-100 p-3 rounded-full mb-3"
-  }, /*#__PURE__*/React.createElement(Upload, {
-    className: "h-6 w-6 text-blue-600"
-  })), /*#__PURE__*/React.createElement("p", {
-    className: "font-semibold text-gray-700"
-  }, "Click or Drag files"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-gray-500 mt-1"
-  }, "Supports PDF (Multi-page) or Images"))), /*#__PURE__*/React.createElement("button", {
-    onClick: handleManualAdd,
-    className: "w-full flex items-center justify-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
-  }, /*#__PURE__*/React.createElement(UserPlus, {
-    className: "h-4 w-4"
-  }), "Add Manual Entry"), /*#__PURE__*/React.createElement("button", {
-    onClick: clearAll,
-    className: "w-full flex items-center justify-center gap-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 py-3 px-4 rounded-lg font-medium shadow-sm transition-all"
-  }, /*#__PURE__*/React.createElement(RefreshCw, {
-    className: "h-4 w-4"
-  }), "Clear / Start Over"), guards.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "space-y-2 pt-2 border-t border-gray-200"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: generatePDF,
-    className: "w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90",
-    style: {
-      backgroundColor: BRAND.navy
-    }
-  }, /*#__PURE__*/React.createElement(Download, {
-    className: "h-4 w-4"
-  }), "Generate PDF Report"), /*#__PURE__*/React.createElement("button", {
-    onClick: generateCSV,
-    className: "w-full flex items-center justify-center gap-2 text-white py-3 px-4 rounded-lg font-medium shadow-sm transition-all hover:opacity-90",
-    style: {
-      backgroundColor: BRAND.green
-    }
-  }, /*#__PURE__*/React.createElement(FileSpreadsheet, {
-    className: "h-4 w-4"
-  }), "Export CSV")), /*#__PURE__*/React.createElement("div", {
-    className: "bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-xs text-yellow-800"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 mb-1 font-bold"
-  }, /*#__PURE__*/React.createElement(AlertTriangle, {
-    className: "h-3 w-3"
-  }), "Internal Note:"), /*#__PURE__*/React.createElement("p", {
-    className: "mb-2"
-  }, "Rows highlighted in Red/Yellow are for your eyes only. The final PDF will only show the data without warnings."), /*#__PURE__*/React.createElement("p", {
-    className: "font-semibold text-green-700"
-  }, "✓ Metadata auto-saves to browser."), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-gray-500 mt-1"
-  }, "(Images not saved in draft to prevent storage errors)"))), /*#__PURE__*/React.createElement("div", {
-    className: "lg:col-span-3"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
-  }, /*#__PURE__*/React.createElement("h3", {
-    className: "font-semibold text-gray-700 flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement(FileText, {
-    className: "h-4 w-4"
-  }), "Scanned Personnel (", guards.length, ")"), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-gray-400"
-  }, "Drag rows to reorder · Click headers to sort")), guards.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "p-12 text-center text-gray-400"
-  }, /*#__PURE__*/React.createElement("p", null, "No data yet. Upload files or add manually.")) : /*#__PURE__*/React.createElement("div", {
-    className: "overflow-x-auto"
-  }, /*#__PURE__*/React.createElement("table", {
-    className: "w-full text-sm text-left"
-  }, /*#__PURE__*/React.createElement("thead", {
-    className: "bg-gray-50 text-gray-500 font-medium border-b border-gray-200"
-  }, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
-    className: "px-2 py-3 w-8"
-  }), /*#__PURE__*/React.createElement("th", {
-    className: "px-2 py-3 w-10 text-center"
-  }, "#"), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-10"
-  }, "Img"), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3",
-    onClick: () => requestSort('name')
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, "Full Name ", /*#__PURE__*/React.createElement(SortIcon, {
-    colKey: "name"
-  }))), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-28",
-    onClick: () => requestSort('type')
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, "Type ", /*#__PURE__*/React.createElement(SortIcon, {
-    colKey: "type"
-  }))), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-32"
-  }, "Cert #"), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-32",
-    onClick: () => requestSort('exp')
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center"
-  }, "Expiration ", /*#__PURE__*/React.createElement(SortIcon, {
-    colKey: "exp"
-  }))), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-32"
-  }, "Internal Status"), /*#__PURE__*/React.createElement("th", {
-    className: "px-4 py-3 w-10"
-  }))), /*#__PURE__*/React.createElement("tbody", {
-    className: "divide-y divide-gray-100"
-  }, sortedGuards.map((guard, index) => {
-    const status = getStatus(guard.exp);
-    const isDuplicate = guard.cert && duplicateMap[guard.cert] > 1;
-    const isLowConfidence = guard.confidence !== undefined && guard.confidence < OCR_CONFIDENCE_THRESHOLD;
-    // [#2] Row highlighting
-    const rowBg = getRowBgClass(guard.exp);
-    const dragClasses = [draggedIndex === index ? 'dragging' : '', dragOverIndex === index && dragOverPosition === 'top' ? 'dragging-over-top' : '', dragOverIndex === index && dragOverPosition === 'bottom' ? 'dragging-over-bottom' : ''].join(' ');
-    return /*#__PURE__*/React.createElement("tr", {
-      key: guard.id,
-      draggable: true,
-      onDragStart: e => handleRowDragStart(e, index),
-      onDragOver: e => handleRowDragOver(e, index),
-      onDragEnd: handleRowDragEnd,
-      onDrop: e => handleRowDrop(e, index),
-      className: `hover:bg-gray-50 group transition-colors drag-row ${rowBg} ${dragClasses} ${isLowConfidence ? 'low-confidence' : ''}`
-    }, /*#__PURE__*/React.createElement("td", {
-      className: "px-2 py-2 text-center"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: "drag-handle text-gray-400"
-    }, /*#__PURE__*/React.createElement(GripVertical, null))), /*#__PURE__*/React.createElement("td", {
-      className: "px-2 py-2 text-center font-medium text-gray-500"
-    }, index + 1), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "h-8 w-8 rounded overflow-hidden border border-gray-200 bg-gray-100 cursor-zoom-in relative flex items-center justify-center hover:ring-2 ring-blue-400 transition-all",
-      onClick: () => setSelectedImage(guard.originalImage)
-    }, guard.originalImage ? /*#__PURE__*/React.createElement("img", {
-      src: guard.originalImage,
-      className: "h-full w-full object-cover"
-    }) : /*#__PURE__*/React.createElement("span", {
-      className: "text-xs text-gray-400",
-      title: "Image not available"
-    }, "--"))), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2"
-    }, /*#__PURE__*/React.createElement("input", {
-      type: "text",
-      value: guard.name,
-      onChange: e => updateGuard(guard.id, 'name', e.target.value),
-      className: "w-full bg-transparent border-none p-0 focus:ring-0 font-medium text-gray-900",
-      placeholder: "Enter Name"
-    })), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2"
-    }, /*#__PURE__*/React.createElement("select", {
-      value: guard.type,
-      onChange: e => updateGuard(guard.id, 'type', e.target.value),
-      className: "w-full bg-transparent border-none p-0 focus:ring-0 text-gray-600 font-medium cursor-pointer"
-    }, /*#__PURE__*/React.createElement("option", {
-      value: "F-01"
-    }, "F-01"), /*#__PURE__*/React.createElement("option", {
-      value: "F-02"
-    }, "F-02"), /*#__PURE__*/React.createElement("option", {
-      value: "F-03"
-    }, "F-03"), /*#__PURE__*/React.createElement("option", {
-      value: "F-04"
-    }, "F-04"), !['F-01', 'F-02', 'F-03', 'F-04'].includes(guard.type) && /*#__PURE__*/React.createElement("option", {
-      value: guard.type
-    }, guard.type))), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2 font-mono text-xs relative"
-    }, /*#__PURE__*/React.createElement("input", {
-      type: "text",
-      value: guard.cert,
-      onChange: e => updateGuard(guard.id, 'cert', e.target.value),
-      className: `w-full bg-transparent border-none p-0 focus:ring-0 ${isDuplicate ? 'text-orange-600 font-bold' : 'text-gray-600'}`,
-      placeholder: "Cert #"
-    }), isDuplicate && /*#__PURE__*/React.createElement("span", {
-      className: "absolute right-0 top-1/2 -translate-y-1/2 text-orange-500",
-      title: "Duplicate Certificate Number detected"
-    }, /*#__PURE__*/React.createElement(AlertTriangle, {
-      className: "h-4 w-4"
-    }))), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2"
-    }, /*#__PURE__*/React.createElement("input", {
-      type: "date",
-      value: guard.exp === 'N/A' ? '' : guard.exp,
-      onChange: e => updateGuard(guard.id, 'exp', e.target.value),
-      className: `w-full bg-transparent border-none p-0 focus:ring-0 cursor-pointer ${status.status === 'expired' ? 'text-red-600 font-bold' : ''}`
-    })), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "flex items-center gap-1"
-    }, /*#__PURE__*/React.createElement("span", {
-      className: `inline-flex items-center px-2 py-1 rounded text-xs font-medium ${status.color}`
-    }, status.label), isLowConfidence && /*#__PURE__*/React.createElement("span", {
-      className: "inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700 border border-amber-300 cursor-help",
-      title: `OCR confidence: ${guard.confidence}%. Review this entry carefully.`
-    }, guard.confidence, "%"))), /*#__PURE__*/React.createElement("td", {
-      className: "px-4 py-2 text-right"
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => removeGuard(guard.id),
-      className: "text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-    }, /*#__PURE__*/React.createElement(XCircle, {
-      className: "h-4 w-4"
-    }))));
-  }))))))));
-}
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(/*#__PURE__*/React.createElement(App, null));
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  window.__fg = { state: state, addFiles: addFiles };
+})();
 </script>
 </body>
 </html>
