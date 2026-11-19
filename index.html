@@ -98,7 +98,7 @@ tbody tr.dropabove td{box-shadow:inset 0 2px 0 var(--indigo)}
 td input,td select{width:100%;border:0;outline:0;background:transparent;border-radius:8px;padding:6px 8px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 td input:focus,td select:focus{background:var(--panel);box-shadow:inset 0 0 0 1.5px var(--indigo)}
 td.check input,td.check select{background:var(--amber-soft);box-shadow:inset 0 0 0 1.5px #E9C766}
-td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:160px}
+td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:158px}
 .pill{display:inline-block;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
 .pill.g{background:var(--green-soft);color:var(--green)} .pill.a{background:var(--amber-soft);color:var(--amber)} .pill.r{background:var(--red-soft);color:var(--red)} .pill.n{background:var(--panel);color:var(--muted)}
 .rowbtn{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:12.5px;padding:6px 8px;border-radius:8px}
@@ -232,7 +232,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
 
   <div class="foot">
     <span>Card photos are read on this device and are not uploaded anywhere.</span>
-    <span id="ver">Scanner v3</span>
+    <span id="ver">Scanner v3.1</span>
   </div>
 </div>
 
@@ -316,10 +316,15 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
   const MAX_SOURCE_SIDE = 3400;        // cap on the decoded photo
 
   // ---- small helpers -------------------------------------------------------
+  // Every canvas is created "read-often", which keeps it in ordinary memory
+  // instead of on the graphics card. Two reasons: reading pixels back is much
+  // faster, and scaling is done by the same code on every computer, so a photo
+  // reads the same on a Mac, a PC or a phone.
   const makeCanvas = (w, h) => {
     const c = document.createElement('canvas');
     c.width = Math.max(1, Math.round(w));
     c.height = Math.max(1, Math.round(h));
+    try { c.getContext('2d', { willReadFrequently: true }); } catch (e) {}
     return c;
   };
   const freeCanvas = c => { if (c) { c.width = 0; c.height = 0; } };
@@ -351,6 +356,32 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       const t = prev; prev = cur; cur = t;
     }
     return prev[n];
+  };
+  const commonRun = (a, b) => {
+    let best = 0;
+    const m = a.length, n = b.length;
+    let prev = new Array(n + 1).fill(0), cur = new Array(n + 1).fill(0);
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : 0;
+        if (cur[j] > best) best = cur[j];
+      }
+      const t = prev; prev = cur; cur = t; cur.fill(0);
+    }
+    return best;
+  };
+  // When the reads of a name disagree, pick the one the other reads back up
+  // the most: a full name whose pieces show up in the other attempts beats a
+  // short fragment.
+  const bestSupported = list => {
+    if (!list.length) return '';
+    let best = list[0], bestScore = -1;
+    list.forEach((c, i) => {
+      let sc = 0;
+      list.forEach((r, j) => { if (i !== j) sc += commonRun(c, r); });
+      if (sc > bestScore || (sc === bestScore && c.length > best.length)) { best = c; bestScore = sc; }
+    });
+    return best;
   };
   // Does an OCR word look like this label?
   const labelMatch = (wordNorm, label) => {
@@ -749,12 +780,13 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
   };
   // Resample `src` so that output pixel (X,Y) shows template point
   // (CARD.u0 + X/P, CARD.v0 + Y/P), where map(u,v) gives the pixel in `src`.
-  const resampleCard = (src, map) => {
-    const P = PX_PER_U;
+  const pixelCache = new WeakMap();
+  const resampleCard = (src, map, pxPerU) => {
+    const P = pxPerU || PX_PER_U;
     const W = Math.round((CARD.u1 - CARD.u0) * P), H = Math.round((CARD.v1 - CARD.v0) * P);
-    const sctx = src.getContext('2d', { willReadFrequently: true });
     const sw = src.width, sh = src.height;
-    const sd = sctx.getImageData(0, 0, sw, sh).data;
+    let sd = pixelCache.get(src);
+    if (!sd) { sd = src.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, sw, sh).data; pixelCache.set(src, sd); }
     const out = makeCanvas(W, H);
     const octx = out.getContext('2d');
     const img = octx.createImageData(W, H);
@@ -864,15 +896,23 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
     return null;
   };
 
-  const parseName = raw => {
+  // info.dirty is set when part of the line had to be thrown away as junk
+  // (stray digits, lower-case specks). Such a read can suggest a name but is
+  // never allowed to confirm one: the junk is usually letters lost to glare.
+  const parseName = (raw, info) => {
     if (!raw) return null;
-    let s = raw.replace(/[\r\n]+/g, ' ').replace(/[|_~`"*=+<>\[\]{}()\\\/:;!?@#$%^&,]/g, ' ');
+    let s = raw.replace(/[\r\n]+/g, ' ');
+    // a lone stroke between words is the letter I (a middle initial)
+    s = s.replace(/([A-Za-z]\s+)[|!1l](?=\s+[A-Za-z])/g, '$1I');
+    if (info && /[0-9]/.test(s)) info.dirty = true;
+    s = s.replace(/[|_~`"*=+<>\[\]{}()\\\/:;!?@#$%^&,]/g, ' ');
     s = s.replace(/[^A-Za-z .'\-]/g, ' ').replace(/\s+/g, ' ').trim();
     s = s.replace(/^N\s?A\s?M\s?E\b\.?\s*/i, '');
     // keep the run of capitalised words; drop stray lower-case specks
-    const toks = s.split(' ').filter(t => /^[A-Z][A-Z'\-.]*$/.test(t) || /^[A-Z]$/.test(t));
+    const all = s.split(' ').filter(t => t.length);
+    const toks = all.filter(t => /^[A-Z][A-Z'\-.]*$/.test(t) || /^[A-Z]$/.test(t));
+    if (info && all.some(t => /[A-Za-z]/.test(t) && toks.indexOf(t) < 0)) info.dirty = true;
     while (toks.length && /^[\-.']+$/.test(toks[0])) toks.shift();
-    // trailing one-letter junk ("GERALD DELGADO RENGIFO V") only when 3+ words precede
     s = toks.join(' ').replace(/[.'\-]+$/g, '').replace(/^[.'\-]+/g, '').trim();
     if (s.length < 3 || !/[A-Z]{2,}/.test(s)) return null;
     return s;
@@ -901,14 +941,27 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
   // Vote across reads. Each read carries `src`, the image version it came from;
   // two reads of the same version share the same pixels, so only agreement
   // ACROSS versions counts as independent confirmation.
-  const vote = reads => {
+  const vote = (reads, keyFn) => {
+    const kf = keyFn || (v => v);
     const vals = reads.filter(r => r && r.v);
     if (!vals.length) return { value: null, votes: 0, sources: 0, total: 0, raw: '', alts: [], all: [] };
     const tally = new Map();
     vals.forEach(r => {
-      const e = tally.get(r.v) || { v: r.v, n: 0, w: 0, raw: r.raw, src: new Set() };
-      e.n += 1; e.w += (r.w || 1); e.src.add(r.src === undefined ? 0 : r.src);
-      tally.set(r.v, e);
+      const k = kf(r.v);
+      const e = tally.get(k) || { v: r.v, n: 0, w: 0, raw: r.raw, src: new Set(), forms: new Map() };
+      e.n += 1; e.w += (r.w || 1); if (!r.dirty) e.src.add(r.src === undefined ? 0 : r.src);
+      e.forms.set(r.v, (e.forms.get(r.v) || 0) + 1);
+      tally.set(k, e);
+    });
+    // spelling to show: the most common form; on a tie the one with more
+    // separate words (a missing space is the usual slip), then the longer
+    tally.forEach(e => {
+      let best = null;
+      e.forms.forEach((n, v) => {
+        const sp = v.split(' ').length;
+        if (!best || n > best.n || (n === best.n && (sp > best.sp || (sp === best.sp && v.length > best.v.length)))) best = { v, n, sp };
+      });
+      e.v = best.v;
     });
     const arr = Array.from(tally.values()).sort((a, b) => (b.src.size - a.src.size) || (b.n - a.n) || (b.w - a.w));
     const top = arr[0], second = arr[1];
@@ -918,6 +971,8 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       alts: arr.slice(1).map(a => a.v), all: arr
     };
   };
+  // names are compared letter by letter, ignoring where the spaces fell
+  const lettersOnly = v => (v || '').replace(/[^A-Z]/g, '');
   const confirmed = v => v.value && v.sources >= 2 && v.rivalSources < 2 && v.rival < v.votes;
 
   // ---- read one straightened card -----------------------------------------
@@ -961,20 +1016,34 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
     return best ? best.w : null;
   };
 
-  const readCard = async (worker, cardColor) => {
-    const P = PX_PER_U;
+  // `copies` are separately straightened pictures of the same card, each cut
+  // from the photo at a slightly different size and angle. A misread tends to
+  // change when the picture changes even a little; a correct read does not.
+  // So a value only counts as confirmed when different copies agree on it.
+  const readCard = async (worker, copies) => {
     // Image versions, tried in order. The third is only used to break a tie.
     const makers = [
-      () => ({ name: 'red', gray: toGray(cardColor, 'red', false) }),
-      () => ({ name: 'even', gray: toGray(cardColor, 'lum', true) }),
-      () => ({ name: 'plain', gray: toGray(cardColor, 'lum', false) })
+      () => ({ name: 'red', P: copies[0].P, gray: toGray(copies[0].get(), 'red', false) }),
+      () => ({ name: 'even', P: copies[1].P, gray: toGray(copies[1].get(), 'lum', true) }),
+      () => ({ name: 'plain', P: copies[2].P, gray: toGray(copies[2].get(), 'lum', false) })
     ];
     const reads = { cert: [], issued: [], exp: [], name: [], type: [], desc: [] };
     const debug = [];
     let labelHits = 0;
+    // Where each printed row sits, kept in card coordinates so that it can be
+    // carried from one copy to the next without reading the whole card again.
+    let layoutT = null;
+    const toT = (k, X, Y) => copies[k].fwd(CARD.u0 + X / copies[k].P, CARD.v0 + Y / copies[k].P);
+    const fromT = (k, p) => { const o = copies[k].inv(p.u, p.v); return { x: (o.u - CARD.u0) * copies[k].P, y: (o.v - CARD.v0) * copies[k].P }; };
 
-    const runVariant = async vi => {
+    // full = read the whole card to find its labels (slow, done once);
+    // otherwise only the field strips are read, at the remembered positions.
+    const runVariant = async (vi, full) => {
       const V = makers[vi]();
+      const P = V.P;
+      const cardX = u => (u - CARD.u0) * P, cardY = v => (v - CARD.v0) * P;
+      let zones = null, p1 = null, hits = 0;
+      if (full) {
       const pass = await ocr(worker, V.gray, 11, '');
       const W = pass.words;
       // The label column down the left edge (CERT.#, ISSUED, NAME ... LOCATION)
@@ -1030,14 +1099,14 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       const dxSpine = k => { const q = S(k), e = SPINE.find(z => z[0] === k); return q ? q.x0 - cardX(e[2]) : 0; };
       L.expires = near('EXPIRES', cardX(0.405) + dxSpine('issued'), rowY('issued', 0.137), 0.11 * P);
       L.type = near('TYPE', cardX(0.412) + dxSpine('fee'), rowY('fee', 0.482), 0.11 * P);
-      const hits = Object.keys(L).filter(k => L[k]).length;
+      hits = Object.keys(L).filter(k => L[k]).length;
       labelHits = Math.max(labelHits, hits);
       const ctr = w => ({ x: (w.x0 + w.x1) / 2, y: (w.y0 + w.y1) / 2 });
       // how much each printed row slopes, measured from label pairs on that row
       const X = {
-        hdrC: findLabel(W, 'CERTIFICATE', 0.000, 0.430, -0.045), hdrF: findLabel(W, 'FDNY', 0.825, 1.000, -0.045),
+        hdrC: near('CERTIFICATE', cardX(0.215), cardY(-0.045), 0.09 * P), hdrF: near('FDNY', cardX(0.9125), cardY(-0.045), 0.09 * P),
         fit: near('FITNESS', cardX(0.57) + dxSpine('fee'), rowY('fee', 0.482), 0.12 * P),
-        must: findLabel(W, 'MUST', 0.290, 0.400, 0.785), seal: findLabel(W, 'SEAL', 0.825, 0.920, 0.785)
+        must: near('MUST', cardX(0.345), cardY(0.785), 0.09 * P), seal: near('SEAL', cardX(0.8725), cardY(0.785), 0.09 * P)
       };
       const slopes = [];
       const addSlope = (a2, b2, v) => {
@@ -1080,7 +1149,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       const catLine = L.type ? rowLine(L.type, 0.412, 0.482) : rowLine(Sf, -0.14, 0.482);
       const descLine = rowLine(Sd, -0.117, 0.545);
 
-      const zones = {
+      zones = {
         cert: { x0: Sc ? Sc.x1 + 6 : cardX(-0.008), x1: cardX(0.42), yf: certLine, half },
         issued: { x0: Si ? Si.x1 + 6 : cardX(-0.004), x1: L.expires ? L.expires.x0 - 6 : cardX(0.295), yf: datesLine, half },
         exp: { x0: L.expires ? L.expires.x1 + 6 : cardX(0.512), x1: cardX(0.86), yf: datesLine, half },
@@ -1091,16 +1160,31 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       const joined = z => wordsInBand(W, z).map(w => w.t).join(' ');
 
       // (1) values straight from the whole-card read
-      const p1 = { cert: joined(zones.cert), issued: joined(zones.issued), exp: joined(zones.exp), name: joined(zones.name), cat: joined(zones.cat), desc: joined(zones.desc) };
+      p1 = { cert: joined(zones.cert), issued: joined(zones.issued), exp: joined(zones.exp), name: joined(zones.name), cat: joined(zones.cat), desc: joined(zones.desc) };
       reads.cert.push({ v: parseCert(p1.cert), raw: p1.cert, w: 1, src: vi });
       reads.issued.push({ v: parseDate(p1.issued), raw: p1.issued, w: 1, src: vi });
       reads.exp.push({ v: parseDate(p1.exp), raw: p1.exp, w: 1, src: vi });
-      reads.name.push({ v: parseName(p1.name), raw: p1.name, w: 1, src: vi });
+      { const inf = {}; const nv = parseName(p1.name, inf); reads.name.push({ v: nv, raw: p1.name, w: 1, src: vi, dirty: !!inf.dirty }); }
       reads.type.push({ v: parseType(p1.cat), raw: p1.cat, w: 1, src: vi });
       reads.desc.push({ v: typeFromDesc(p1.desc), raw: p1.desc, w: 1, src: vi });
+      if (!layoutT || hits > layoutT.hits) {
+        layoutT = { hits, z: {} };
+        Object.keys(zones).forEach(k => {
+          const z = zones[k];
+          layoutT.z[k] = { a: toT(vi, z.x0, z.yf(z.x0)), b: toT(vi, z.x1, z.yf(z.x1)), half: z.half / P };
+        });
+      }
+      } else {
+        zones = {};
+        Object.keys(layoutT.z).forEach(k => {
+          const t = layoutT.z[k], A = fromT(vi, t.a), B = fromT(vi, t.b);
+          const m = (B.y - A.y) / Math.max(1, B.x - A.x);
+          zones[k] = { x0: A.x, x1: B.x, yf: x => A.y + m * (x - A.x), half: t.half * P };
+        });
+      }
 
       // (2) each field re-read on its own as a single line
-      const strip = async (z, whitelist) => {
+      const strip = async (z, whitelist, tag) => {
         const c = cropBand(V.gray, z);
         const r = await ocr(worker, c, 7, whitelist);
         freeCanvas(c);
@@ -1110,24 +1194,26 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
         cert: await strip(zones.cert, '0123456789'),
         issued: await strip(zones.issued, '0123456789/'),
         exp: await strip(zones.exp, '0123456789/'),
-        name: await strip(zones.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ -'."),
-        cat: await strip(zones.cat, 'CATF.0123456789 ')
+        name: await strip(zones.name, "ABCDEFGHIJKLMNOPQRSTUVWXYZ -'.", 'name'),
+        cat: await strip(zones.cat, 'CATF.0123456789 '),
+        desc: full ? '' : await strip(zones.desc, '')
       };
+      if (!full) reads.desc.push({ v: typeFromDesc(st.desc), raw: st.desc, w: 1, src: vi });
       reads.cert.push({ v: parseCert(st.cert), raw: st.cert, w: 1.5, src: vi });
       reads.issued.push({ v: parseDate(st.issued), raw: st.issued, w: 1.5, src: vi });
       reads.exp.push({ v: parseDate(st.exp), raw: st.exp, w: 1.5, src: vi });
-      reads.name.push({ v: parseName(st.name), raw: st.name, w: 1.2, src: vi });
+      { const inf = {}; const nv = parseName(st.name, inf); reads.name.push({ v: nv, raw: st.name, w: 1.2, src: vi, dirty: !!inf.dirty }); }
       reads.type.push({ v: parseType(st.cat), raw: st.cat, w: 1.2, src: vi });
-      debug.push({ variant: V.name, card: p1, strip: st, labels: hits });
+      debug.push({ variant: V.name, card: p1 || {}, strip: st, labels: hits });
       freeCanvas(V.gray);
     };
 
-    await runVariant(0);
-    await runVariant(1);
-    let cert = vote(reads.cert), issued = vote(reads.issued), exp = vote(reads.exp), name = vote(reads.name);
+    await runVariant(0, true);
+    await runVariant(1, true);
+    let cert = vote(reads.cert), issued = vote(reads.issued), exp = vote(reads.exp), name = vote(reads.name, lettersOnly);
     if (!(confirmed(cert) && confirmed(exp) && confirmed(name))) {
-      await runVariant(2);                                    // tie-breaker
-      cert = vote(reads.cert); issued = vote(reads.issued); exp = vote(reads.exp); name = vote(reads.name);
+      await runVariant(2, false);                             // tie-breaker
+      cert = vote(reads.cert); issued = vote(reads.issued); exp = vote(reads.exp); name = vote(reads.name, lettersOnly);
     }
     const type = vote(reads.type), desc = vote(reads.desc);
 
@@ -1138,6 +1224,8 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       raw: { name: name.raw, cert: cert.raw, exp: exp.raw },
       labelHits, debug
     };
+    out.nameCands = Array.from(new Set(reads.name.filter(r => r && r.v).map(r => r.v)));
+    if (!out.ok.name && out.nameCands.length) out.name = bestSupported(reads.name.filter(r => r && r.v).map(r => r.v));
 
     // ---- cross-checks -----------------------------------------------------
     // category: printed code and the description line should tell the same story
@@ -1176,8 +1264,8 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
   // ---- one photo, start to finish -----------------------------------------
   const ROTATIONS = [0, 90, 270, 180];
 
-  const locatePass = async (worker, source, rot, prep) => {
-    const k = Math.min(3, LOCATE_LONG_SIDE / Math.max(source.width, source.height));
+  const locatePass = async (worker, source, rot, prep, longSide) => {
+    const k = Math.min(3, (longSide || LOCATE_LONG_SIDE) / Math.max(source.width, source.height));
     const small = scaleCanvas(source, k);
     const turned = rotateCanvas(small, rot);
     const gray = prep === 'plain' ? toGray(turned, 'lum', false) : toGray(turned, 'lum', true, true);
@@ -1191,38 +1279,60 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
   // People photograph both of a guard's cards together. If one card's name
   // came through clean and the other is a near miss of it, they are the same person.
   const reconcileNames = cards => {
-    // "Similar" has to mean "the same name, damaged", never "another guard with
-    // a name a bit like it": a sheet can hold several different people.
-    const similar = (a, b) => {
+    // "Same person" has to mean "the same name, damaged", never "another guard
+    // with a name a bit like it": a sheet can hold several different people.
+    const samePerson = (a, b) => {
       if (!a || !b) return false;
-      if (a === b) return true;
-      const ed = editDistanceFull(a, b);
-      if (ed <= 2) return true;
-      const limit = Math.floor(0.3 * Math.max(a.length, b.length));
-      if (ed > limit) return false;
+      const ca = lettersOnly(a), cb = lettersOnly(b);
+      if (ca === cb) return true;
       const ta = a.split(' '), tb = b.split(' ');
-      const shared = ta.filter(t => tb.indexOf(t) >= 0).length;
-      if (shared >= 2) return true;
-      const la = ta[ta.length - 1], lb = tb[tb.length - 1];
-      return la === lb && la.length >= 5 && ta[0].slice(0, 3) === tb[0].slice(0, 3);
+      const shared = ta.filter(t => tb.indexOf(t) >= 0);
+      if (shared.length >= 2 && shared.some(t => t.length >= 5)) return true;
+      // same first letter and the same long ending: one of them lost letters
+      // from the front (glare over the first name is the usual cause)
+      let suf = 0;
+      while (suf < ca.length && suf < cb.length && ca[ca.length - 1 - suf] === cb[cb.length - 1 - suf]) suf++;
+      if (suf >= 6 && ca[0] === cb[0]) return true;
+      return editDistanceFull(a, b) <= Math.max(2, Math.floor(0.3 * Math.max(a.length, b.length)));
     };
-    const good = cards.filter(c => c.ok.name && c.name);
-    // an unconfirmed name that is a damaged copy of a confirmed one on the same photo
+    const good = () => cards.filter(c => c.ok.name && c.name);
     cards.forEach(c => {
-      if (c.ok.name || !c.name) return;
-      const m = good.find(g => g !== c && similar(g.name, c.name));
-      if (m) { c.name = m.name; c.ok.name = true; c.nameFromSibling = true; }
+      if (c.ok.name) return;
+      const others = good().filter(g => g !== c);
+      // One of this card's own reads matches another card's confirmed name
+      // letter for letter: two cards, read separately, saying the same thing.
+      let m = others.find(g => (c.nameCands || []).some(n => lettersOnly(n) === lettersOnly(g.name)));
+      if (m) { c.name = m.name; c.ok.name = true; c.nameFromSibling = true; return; }
+      // Looks like a damaged copy of another card's name: offer that spelling,
+      // but leave it marked for a person to confirm.
+      m = c.name ? others.find(g => samePerson(g.name, c.name)) : null;
+      if (m) { c.name = m.name; c.nameFromSibling = true; }
     });
-    // two confirmed names that nearly match but differ: do not change either,
-    // just ask a person to look at the odd one out
-    for (let i = 0; i < good.length; i++) for (let j = i + 1; j < good.length; j++) {
-      const x = good[i], y = good[j];
-      if (x.name === y.name || !similar(x.name, y.name)) continue;
-      const count = nm => good.filter(g => g.name === nm).length;
+    // Two confirmed names that look like one person spelled two ways: something
+    // was misread. Mark the odd one out (both, if there is no majority).
+    const g = good();
+    const count = nm => g.filter(x => x.name === nm).length;
+    for (let i = 0; i < g.length; i++) for (let j = i + 1; j < g.length; j++) {
+      const x = g[i], y = g[j];
+      if (x.name === y.name) continue;
+      if (lettersOnly(x.name) === lettersOnly(y.name)) {
+        // same letters, different spacing: keep the one with more separate words
+        const keep = x.name.split(' ').length >= y.name.split(' ').length ? x.name : y.name;
+        x.name = keep; y.name = keep; continue;
+      }
+      if (!samePerson(x.name, y.name)) continue;
       const cx = count(x.name), cy = count(y.name);
+      // Every card in the photo belongs to one guard, and one spelling is
+      // clearly missing letters: glare eats letters, it never adds them. Keep
+      // the full spelling, offer it on the short card, mark only that one.
+      const lx = lettersOnly(x.name).length, ly = lettersOnly(y.name).length;
+      if (cx === cy && Math.abs(lx - ly) >= 2 && g.every(p => g.every(q => samePerson(p.name, q.name)))) {
+        const whole = lx > ly ? x : y, part = lx > ly ? y : x;
+        part.name = whole.name; part.ok.name = false; part.nameFromSibling = true;
+        continue;
+      }
       if (cx <= cy) x.ok.name = false;
       if (cy <= cx) y.ok.name = false;
-      // two other cards agree with each other: show their spelling, still marked
       if (cx === 1 && cy >= 2) x.name = y.name;
       else if (cy === 1 && cx >= 2) y.name = x.name;
     }
@@ -1264,7 +1374,14 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       for (const rot of ROTATIONS) {
         if (rot === best.rot) continue;
         let r = passes.find(q => q.rot === rot && q.prep === 'clean');
-        if (!r) { step('Checking for cards lying another way'); r = await locatePass(worker, source, rot, 'clean'); }
+        if (!r) {
+          // quick look at a smaller size first; only a turn that shows a card
+          // gets the full-size (slow) pass
+          step('Checking for cards lying another way');
+          const quick = await locatePass(worker, source, rot, 'clean', 1300);
+          if (!quick.cards.some(c => c.score >= 9)) continue;
+          r = await locatePass(worker, source, rot, 'clean');
+        }
         r.cards.forEach(c => {
           if (c.score < 12) return;
           const at = centre(c, r), U = size(c, r);
@@ -1280,74 +1397,128 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
     const fullFor = rot => { if (!fulls[rot]) fulls[rot] = rotateCanvas(source, rot); return fulls[rot]; };
     const results = [];
     const P = PX_PER_U;
+    const rotT = deg => (u, v) => {
+      const t = deg * Math.PI / 180, du = u - 0.5, dv = v - 0.36;
+      return { u: 0.5 + du * Math.cos(t) - dv * Math.sin(t), v: 0.36 + du * Math.sin(t) + dv * Math.cos(t) };
+    };
+    // Three straightened copies at slightly different sizes and angles.
+    const SPECS = [{ P: 1000, deg: 0 }, { P: 1160, deg: 0.45 }, { P: 1080, deg: -0.4 }];
+    const makeCopies = (base, baseMap, store) => SPECS.map((sp, k) => {
+      const fwd = rotT(sp.deg);
+      return {
+        P: sp.P, fwd, inv: rotT(-sp.deg),
+        get: () => { if (!store[k]) store[k] = resampleCard(base, (u, v) => { const q = fwd(u, v); return baseMap(q.u, q.v); }, sp.P); return store[k]; }
+      };
+    });
+    // label positions (word ends, corrected for tilt) paired with the template
+    const labelPairs = (inl, tfLike, div) => {
+      const th = Math.atan2(tfLike.b, tfLike.a), co = Math.cos(th), si = Math.sin(th), pairs = [];
+      inl.forEach(q => {
+        const half = (q.w.x1 - q.w.x0) / 2 / Math.max(0.9, co);
+        pairs.push({ u: q.e[1], v: q.e[3], x: (q.cx - half * co) / div, y: (q.cy - half * si) / div });
+        pairs.push({ u: q.e[2], v: q.e[3], x: (q.cx + half * co) / div, y: (q.cy + half * si) / div });
+      });
+      return pairs;
+    };
+    // camera-angle fit; null unless the labels are many, well spread and agree
+    const angleFit = (pairs, labels, simMap, unit) => {
+      const us = pairs.map(q => q.u), vs = pairs.map(q => q.v);
+      if (Math.max.apply(null, us) - Math.min.apply(null, us) <= 0.9 || Math.max.apply(null, vs) - Math.min.apply(null, vs) <= 0.6) return null;
+      const Hm = fitHomography(pairs);
+      if (!Hm) return null;
+      let err = 0, dev = 0;
+      pairs.forEach(q => { const z = Hm(q.u, q.v); err += Math.hypot(z.x - q.x, z.y - q.y); });
+      err /= pairs.length;
+      [[CARD.u0, CARD.v0], [CARD.u1, CARD.v0], [CARD.u0, CARD.v1], [CARD.u1, CARD.v1]].forEach(k2 => {
+        const z = Hm(k2[0], k2[1]), y = simMap(k2[0], k2[1]);
+        dev = Math.max(dev, Math.hypot(z.x - y.x, z.y - y.y));
+      });
+      return err < (labels >= 10 ? 0.03 : 0.015) * unit && dev < 0.12 * unit ? Hm : null;
+    };
+
     for (let i = 0; i < jobs.length; i++) {
       step(jobs.length > 1 ? 'Reading card ' + (i + 1) + ' of ' + jobs.length : 'Reading the card');
       const c = jobs[i].c, jk = jobs[i].k, full = fullFor(jobs[i].rot);
       const tf = { a: c.tf.a / jk, b: c.tf.b / jk, tx: c.tf.tx / jk, ty: c.tf.ty / jk };
-      const rough = warpCard(full, tf, ROUGH);
-      // Second look: find the labels again on the straightened card, where they
-      // are large and isolated, and correct any tilt or camera angle.
-      let map = (u, v) => ({ x: (u - ROUGH.u0) * P, y: (v - ROUGH.v0) * P });
-      let refine = 'none';
-      try {
-        let again = [];
-        const expC = { x: (0.5 - ROUGH.u0) * P, y: (0.36 - ROUGH.v0) * P };
-        for (const prep of [['lum', true, true], ['lum', false, false]]) {
-          const g = toGray(rough, prep[0], prep[1], prep[2]);
-          const p = await ocr(worker, g, 11, '');
-          freeCanvas(g);
-          // the rough crop can include a slice of a neighbouring card: keep only
-          // a match that sits where this card is expected
-          const found = findCards(p.words).filter(f => {
-            const z = applyTf(f.tf, 0.5, 0.36);
-            const ang = Math.abs(Math.atan2(f.tf.b, f.tf.a)) * 180 / Math.PI;
-            return Math.hypot(z.x - expC.x, z.y - expC.y) < 0.11 * P && ang < 16;
-          });
-          if (found.length && (!again.length || found[0].score > again[0].score)) again = found;
-          if (again.length && again[0].labels >= 9) break;
-        }
-        if (again.length && again[0].labels >= 4) {
-          const r = again[0];
-          const ratio = Math.hypot(r.tf.a, r.tf.b) / P;
-          if (ratio > 0.8 && ratio < 1.25) {
-            map = (u, v) => applyTf(r.tf, u, v);
-            refine = 'tilt';
-            // enough labels spread over the card: also undo the camera angle
-            if (r.labels >= 7) {
-              const pairs = [];
-              const th = Math.atan2(r.tf.b, r.tf.a), co = Math.cos(th), si = Math.sin(th);
-              r.inl.forEach(q => {
-                const half = (q.w.x1 - q.w.x0) / 2 / Math.max(0.9, co);
-                pairs.push({ u: q.e[1], v: q.e[3], x: q.cx - half * co, y: q.cy - half * si });
-                pairs.push({ u: q.e[2], v: q.e[3], x: q.cx + half * co, y: q.cy + half * si });
-              });
-              const us = pairs.map(q => q.u), vs = pairs.map(q => q.v);
-              const spreadU = Math.max.apply(null, us) - Math.min.apply(null, us);
-              const spreadV = Math.max.apply(null, vs) - Math.min.apply(null, vs);
-              const Hm = spreadU > 0.9 && spreadV > 0.6 ? fitHomography(pairs) : null;
-              if (Hm) {
-                // sanity: must stay close to the simpler fit, and fit the labels well
-                let err = 0, dev = 0;
-                pairs.forEach(q => { const z = Hm(q.u, q.v); err += Math.hypot(z.x - q.x, z.y - q.y); });
-                err /= pairs.length;
-                [[CARD.u0, CARD.v0], [CARD.u1, CARD.v0], [CARD.u0, CARD.v1], [CARD.u1, CARD.v1]].forEach(k2 => {
-                  const z = Hm(k2[0], k2[1]), y = applyTf(r.tf, k2[0], k2[1]);
-                  dev = Math.max(dev, Math.hypot(z.x - y.x, z.y - y.y));
-                });
-                if (err < 0.012 * P && dev < 0.12 * P) { map = Hm; refine = 'angle'; }
+      const U = Math.hypot(tf.a, tf.b);
+      let rough = null;
+
+      // Route 1: the first look already found plenty of labels. Straighten the
+      // card straight out of the photo, camera angle included.
+      const direct = () => {
+        if (c.inl.length < 10) return null;
+        const Hm = angleFit(labelPairs(c.inl, c.tf, jk), c.inl.length, (u, v) => applyTf(tf, u, v), U);
+        return Hm ? { base: full, map: Hm, refine: 'photo' } : null;
+      };
+      // Route 2: cut a rough crop, find the labels again on it (large and
+      // isolated now) and correct tilt or camera angle from those.
+      const viaRough = async () => {
+        if (!rough) rough = warpCard(full, tf, ROUGH);
+        let map = (u, v) => ({ x: (u - ROUGH.u0) * P, y: (v - ROUGH.v0) * P });
+        let refine = 'none';
+        try {
+          let again = [];
+          const expC = { x: (0.5 - ROUGH.u0) * P, y: (0.36 - ROUGH.v0) * P };
+          for (const prep of [['lum', true, true], ['lum', false, false]]) {
+            const g = toGray(rough, prep[0], prep[1], prep[2]);
+            const p = await ocr(worker, g, 11, '');
+            freeCanvas(g);
+            // the rough crop can include a slice of a neighbouring card: keep only
+            // a match that sits where this card is expected
+            const found = findCards(p.words).filter(f => {
+              const z = applyTf(f.tf, 0.5, 0.36);
+              const ang = Math.abs(Math.atan2(f.tf.b, f.tf.a)) * 180 / Math.PI;
+              return Math.hypot(z.x - expC.x, z.y - expC.y) < 0.11 * P && ang < 16;
+            });
+            if (found.length && (!again.length || found[0].score > again[0].score)) again = found;
+            if (again.length && again[0].labels >= 9) break;
+          }
+          if (again.length && again[0].labels >= 4) {
+            const r = again[0];
+            const ratio = Math.hypot(r.tf.a, r.tf.b) / P;
+            if (ratio > 0.8 && ratio < 1.25) {
+              map = (u, v) => applyTf(r.tf, u, v);
+              refine = 'tilt';
+              if (r.labels >= 7) {
+                const Hm = angleFit(labelPairs(r.inl, r.tf, 1), r.labels, map, P);
+                if (Hm) { map = Hm; refine = 'angle'; }
               }
             }
           }
+        } catch (e) { /* keep the rough crop as it is */ }
+        return { base: rough, map, refine };
+      };
+      const tryPlan = async plan => {
+        const store = [];
+        const copies = makeCopies(plan.base, plan.map, store);
+        const d = await readCard(worker, copies);
+        d.refine = plan.refine;
+        return { d, store, copies };
+      };
+      const better = (x, y) => { if (!x) return y; if (y.d.labelHits > x.d.labelHits) { x.store.forEach(freeCanvas); return y; } y.store.forEach(freeCanvas); return x; };
+
+      let res = null;
+      const p1 = direct();
+      if (p1) res = await tryPlan(p1);
+      if (!res || res.d.labelHits < 7) {
+        // the labels were lost: that route latched onto the wrong lines
+        const p2 = await viaRough();
+        res = better(res, await tryPlan(p2));
+        if (res.d.labelHits < 7 && p2.refine !== 'none') {
+          res = better(res, await tryPlan({ base: rough, map: (u, v) => ({ x: (u - ROUGH.u0) * P, y: (v - ROUGH.v0) * P }), refine: 'none' }));
         }
-      } catch (e) { /* keep the rough crop */ }
-      const color = resampleCard(rough, map);
-      freeCanvas(rough);
-      const data = await readCard(worker, color);
-      data.refine = refine;
+      }
+      const data = res.d;
+      // how many pixels of the original photo the card actually covers
+      data.srcWidth = Math.round(U * (CARD.u1 - CARD.u0));
+      // A card this small in the photo is a few blurry pixels per letter. Every
+      // copy is cut from the same blur, so their agreeing proves little.
+      if (data.srcWidth < 600) { data.lowRes = true; data.ok.name = false; data.ok.cert = false; data.ok.exp = false; }
       // a small colour copy of the straightened card for the roster and the PDF
+      const color = res.copies[0].get();
       const thumb = scaleCanvas(color, 900 / color.width);
       data.cardImage = thumb.toDataURL('image/jpeg', 0.82);
-      freeCanvas(thumb); freeCanvas(color);
+      freeCanvas(thumb); res.store.forEach(freeCanvas); freeCanvas(rough);
       data.locateScore = c.score;
       results.push(data);
     }
@@ -1489,7 +1660,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
         '<td class="type' + (fl.type ? ' check' : '') + '" data-l="Type"><select data-f="type">' + ['', 'F-01', 'F-02', 'F-03', 'F-04'].map(function (t) { return '<option value="' + t + '"' + (r.type === t ? ' selected' : '') + '>' + (t || 'Choose') + '</option>'; }).join('') + '</select></td>' +
         '<td class="cert' + (fl.cert ? ' check' : '') + '" data-l="Certificate #"><input data-f="cert" value="' + esc(r.cert) + '" placeholder="Number" inputmode="numeric" autocomplete="off"></td>' +
         '<td class="exp' + (fl.exp ? ' check' : '') + '" data-l="Expires"><input data-f="exp" type="date" value="' + esc(r.exp) + '"></td>' +
-        '<td><span class="pill ' + st.k + '">' + st.label + '</span>' + (r.cert && d[r.cert] > 1 ? ' <span class="pill a">Listed twice</span>' : '') + '</td>' +
+        '<td><span class="pill ' + st.k + '">' + st.label + '</span>' + (r.cert && d[r.cert] > 1 ? ' <span class="pill a">Listed twice</span>' : '') + (r.lowRes && chk ? ' <span class="pill n" title="The card is small or blurry in this photo. A closer, sharper photo reads better.">Blurry photo</span>' : '') + '</td>' +
         '<td style="white-space:nowrap;text-align:right">' + (chk ? '<button type="button" class="rowbtn review" data-act="review">Check</button>' : '') + '<button type="button" class="rowbtn" data-act="remove" title="Remove this guard">Remove</button></td></tr>';
     });
     $('#roster').innerHTML = h + '</tbody></table>';
@@ -1526,7 +1697,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
       if (!window.Tesseract) throw new Error('The scanner could not load. Check the internet connection, then reload this page.');
       var cores = navigator.hardwareConcurrency || 2;
       var mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
-      var n = mobile ? 1 : cores >= 8 ? 3 : cores >= 4 ? 2 : 1;
+      var n = mobile ? 1 : cores >= 8 ? 4 : cores >= 4 ? 2 : 1;
       var opts = {};
       // when this page ships with its own copy of the reading data, use it
       // (one less thing to fetch from the internet); otherwise use the public copy
@@ -1577,7 +1748,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
     return {
       id: uid(), name: c.name || '', type: c.type || '', cert: c.cert || '', exp: c.exp || '', issued: c.issued || '',
       flags: { name: !c.ok.name || !c.name, type: !c.ok.type || !c.type, cert: !c.ok.cert || !c.cert, exp: !c.ok.exp || !c.exp },
-      src: 'scan', photo: photoName
+      src: 'scan', photo: photoName, lowRes: !!c.lowRes
     };
   };
   var pumping = false;
@@ -1635,7 +1806,7 @@ td.name{min-width:220px} td.type{width:92px} td.cert{width:130px} td.exp{width:1
     $('#mPic').innerHTML = img ? '<img alt="Card" src="' + img + '">' : '<div class="nopic">Added by hand, no card picture</div>';
     var chk = needsCheck(r);
     $('#mTitle').textContent = chk ? 'Check this card' : (r.name || 'Guard');
-    $('#mHint').textContent = chk ? 'Compare the yellow boxes with the card, fix anything that is off, then press Looks right.' : 'Everything on this card was confirmed.';
+    $('#mHint').textContent = chk ? (r.lowRes ? 'This card is small or blurry in the photo, so the scanner could not be sure of it. ' : '') + 'Compare the yellow boxes with the card, fix anything that is off, then press Looks right.' : 'Everything on this card was confirmed.';
     $('#mName').value = r.name; $('#mType').value = r.type; $('#mCert').value = r.cert; $('#mExp').value = r.exp;
     FIELDS.forEach(function (f) {
       var box = $('.f2[data-f="' + f + '"]'), on = r.flags && r.flags[f];
