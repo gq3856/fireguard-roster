@@ -32,11 +32,50 @@ h1 em{font-style:normal;color:var(--indigo)}
 .top .sub{font-size:13px;color:var(--muted);font-weight:500;max-width:330px;text-align:right}
 
 /* job panels */
-.job{display:grid;grid-template-columns:1.3fr 1fr 1.3fr;gap:14px;margin-bottom:18px}
+.job{display:grid;grid-template-columns:1.3fr 1fr .9fr 1.3fr;gap:14px;margin-bottom:18px}
 .field{background:var(--white);border-radius:12px;border-left:5px solid var(--ink);padding:11px 14px 10px}
 .field label{display:block;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 .field input{width:100%;border:0;outline:0;background:transparent;font-weight:700;font-size:16px;color:var(--ink);padding:3px 0 0}
 .field input::placeholder{color:var(--faint);font-weight:600}
+.field select{width:100%;border:0;outline:0;background:transparent;font-weight:700;font-size:16px;color:var(--ink);padding:3px 0 0;margin-left:-4px}
+
+/* saved guards */
+.saved{background:var(--white);border-radius:var(--r);padding:14px 18px 14px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.saved .t{font-weight:800;color:var(--ink);font-size:15px}
+.saved .s{font-size:13px;color:var(--muted);font-weight:600}
+.pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+button.pill{border:0;cursor:pointer}
+button.pill:hover{filter:brightness(.96)}
+.sheet.list{grid-template-columns:1fr;max-width:900px}
+.lhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:2px}
+.search{width:100%;border:0;border-radius:10px;background:var(--panel);padding:11px 12px;font-weight:600;font-size:15px;color:var(--ink);outline:0;box-shadow:inset 0 0 0 1.5px var(--soft);margin-bottom:10px}
+.search:focus{box-shadow:inset 0 0 0 2px var(--indigo)}
+#lList{max-height:48vh;overflow:auto;margin-top:10px;border-top:1px solid var(--soft)}
+.g{display:grid;grid-template-columns:minmax(170px,250px) 1fr;gap:10px;align-items:start;padding:9px 2px;border-bottom:1px solid var(--soft)}
+.gname{border:0;background:transparent;text-align:left;font-weight:800;color:var(--ink);font-size:14px;padding:6px 4px;border-radius:8px}
+.gname:hover{background:var(--panel)}
+.gcards{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.gc{display:inline-flex;align-items:stretch;border-radius:10px;background:var(--panel);box-shadow:inset 0 0 0 1.5px var(--soft);overflow:hidden}
+.gc>button{border:0;background:transparent;padding:7px 10px;font-size:12.5px;font-weight:600;color:var(--body);font-variant-numeric:tabular-nums;text-align:left}
+.gc>button b{color:var(--ink);font-weight:800}
+.gc.on{background:var(--indigo-soft);box-shadow:inset 0 0 0 2px var(--indigo)}
+.gc.dis>button:first-child{opacity:.6;cursor:default}
+.gc .gx{color:var(--muted);border-left:1px solid var(--soft);padding:6px 10px;font-weight:700;font-size:15px;line-height:1}
+.gc.on .gx{border-left-color:#C5CCEA}
+.gc .gx:hover{color:var(--red)}
+
+/* camera */
+.camwrap{position:fixed;inset:0;background:#000;z-index:60;display:none}
+.camwrap.show{display:block}
+.camwrap video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.camguide{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:min(90vw,calc(62vh * 1.48));aspect-ratio:1.48;border:3px solid #fff;border-radius:14px;box-shadow:0 0 0 200vmax rgba(8,13,28,.5);transition:border-color .15s}
+.camguide.flash{border-color:#7CE0A8}
+.camtop{position:absolute;top:0;left:0;right:0;padding:calc(env(safe-area-inset-top, 0px) + 14px) 18px 14px;color:#fff;font-weight:700;font-size:14px;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+.cambar{position:absolute;left:0;right:0;bottom:0;padding:16px 22px calc(env(safe-area-inset-bottom, 0px) + 18px);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;color:#fff;font-weight:700;font-size:13px;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+#camShot{width:72px;height:72px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.28);justify-self:center;padding:0}
+#camShot:active{background:#fff}
+#camDone{justify-self:start}
+#camCount{justify-self:end;text-align:right}
 
 /* cards */
 .card{background:var(--white);border-radius:var(--r);padding:20px 22px;margin-bottom:18px}
@@ -90,6 +129,7 @@ thead th.sortable:hover{color:var(--ink)}
 tbody td{padding:9px 10px;border-bottom:1px solid var(--soft);vertical-align:middle}
 tbody tr.flag td:first-child{box-shadow:inset 4px 0 0 var(--amber)}
 tbody tr.ok td:first-child{box-shadow:inset 4px 0 0 var(--green)}
+tbody tr.miss td:first-child{box-shadow:inset 4px 0 0 var(--red)}
 tbody tr.dragging{opacity:.4}
 tbody tr.dropabove td{box-shadow:inset 0 2px 0 var(--indigo)}
 .num{color:var(--faint);font-weight:800;font-variant-numeric:tabular-nums;width:34px;cursor:grab}
@@ -154,15 +194,16 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   thead{display:none}
   table,tbody,tr,td{display:block;width:100%}
   tbody tr{border:1px solid var(--soft);border-radius:12px;margin-bottom:10px;padding:8px 8px 8px 12px;position:relative}
-  tbody tr.flag{border-left:4px solid var(--amber)} tbody tr.ok{border-left:4px solid var(--green)}
-  tbody tr.flag td:first-child,tbody tr.ok td:first-child{box-shadow:none}
+  tbody tr.flag{border-left:4px solid var(--amber)} tbody tr.ok{border-left:4px solid var(--green)} tbody tr.miss{border-left:4px solid var(--red)}
+  .g{grid-template-columns:1fr;gap:2px}
+  tbody tr.flag td:first-child,tbody tr.ok td:first-child,tbody tr.miss td:first-child{box-shadow:none}
   tbody td{border:0;padding:3px 0}
   td.num{display:none}
   td.name,td.type,td.cert,td.exp{width:auto;min-width:0}
   td[data-l]::before{content:attr(data-l);display:block;font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-left:8px}
   .thumb{width:118px;height:75px}
 }
-@media print{.card.add,.export,.actions,.chips,.rowbtn{display:none}}
+@media print{.card.add,.export,.actions,.chips,.rowbtn,.saved{display:none}}
 </style>
 </head>
 <body>
@@ -180,7 +221,13 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   <div class="job">
     <div class="field"><label for="client">Client or event</label><input id="client" placeholder="Who is this roster for?" autocomplete="off"></div>
     <div class="field"><label for="date">Event date</label><input id="date" type="date"></div>
+    <div class="field"><label for="req">Required card</label><select id="req"><option value="">Any card</option><option>F-01</option><option>F-02</option><option>F-03</option><option>F-04</option></select></div>
     <div class="field"><label for="company">Prepared by</label><input id="company" autocomplete="off"></div>
+  </div>
+
+  <div class="saved" id="saved">
+    <div><div class="t">Saved guards</div><div class="s" id="savedSub"></div></div>
+    <div class="pills"><span class="pills" id="savedPills"></span><button class="btn ghost small" id="openLib" type="button">Open list</button></div>
   </div>
 
   <div class="card add">
@@ -191,6 +238,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
       <div class="btns">
         <button class="btn" id="pick" type="button">Choose photos</button>
         <button class="btn indigo only-touch" id="snap" type="button">Take a photo</button>
+        <button class="btn ghost" id="pickSaved" type="button" hidden>Pick from saved guards</button>
         <button class="btn ghost" id="manual" type="button">Add a guard by hand</button>
       </div>
     </div>
@@ -202,6 +250,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   <div class="card">
     <div class="eyebrow"><span class="n">2</span> Check the roster</div>
     <div class="banner warn" id="checkBanner"></div>
+    <div class="banner err" id="reqBanner"></div>
     <div class="rhead">
       <div class="summary" id="summary"></div>
       <div class="chips" id="chips"></div>
@@ -231,8 +280,8 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   </div>
 
   <div class="foot">
-    <span>Card photos are read on this device and are not uploaded anywhere.</span>
-    <span id="ver">Scanner v3.1</span>
+    <span>Card photos are read on this device and are not uploaded anywhere. Saved guards stay on this device too.</span>
+    <span id="ver">Version 3.2 · Scanner v3.1</span>
   </div>
 </div>
 
@@ -257,6 +306,38 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
         <button class="btn ghost small" id="mPrev" type="button">Previous</button>
         <button class="btn ghost small" id="mNext" type="button">Next</button></div>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="lib" aria-hidden="true">
+  <div class="sheet list" role="dialog" aria-modal="true" aria-label="Saved guards">
+    <div class="form">
+      <div class="lhead"><h4>Saved guards</h4><button class="btn ghost small" id="lClose" type="button">Close</button></div>
+      <div class="hint" id="lHint"></div>
+      <input class="search" id="lSearch" placeholder="Search by name or certificate number" autocomplete="off">
+      <div class="chips" id="lChips"></div>
+      <div id="lList"></div>
+      <div class="mrow">
+        <button class="btn" id="lAdd" type="button" disabled>Add to roster</button>
+        <button class="rowbtn" id="lAll" type="button">Select all shown</button>
+        <span class="sp"></span>
+        <button class="rowbtn" id="lCsv" type="button">Download this list</button>
+        <button class="rowbtn" id="lBackup" type="button">Back up</button>
+        <button class="rowbtn" id="lRestore" type="button">Load a backup</button>
+        <input id="lFile" type="file" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="camwrap" id="camUI" aria-hidden="true">
+  <video id="camV" playsinline autoplay muted></video>
+  <div class="camguide" id="camG"></div>
+  <div class="camtop" id="camMsg"></div>
+  <div class="cambar">
+    <button class="btn ghost" id="camDone" type="button">Done</button>
+    <button id="camShot" type="button" aria-label="Take the photo"></button>
+    <span id="camCount"></span>
   </div>
 </div>
 
@@ -1561,7 +1642,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   'use strict';
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); };
-  var LS_ROWS = 'ares_fg_roster_v3', LS_SET = 'ares_fg_settings_v3';
+  var LS_ROWS = 'ares_fg_roster_v3', LS_SET = 'ares_fg_settings_v3', LS_LIB = 'ares_fg_guards_v1';
   var CDN = {
     heic: 'https://cdn.jsdelivr.net/npm/heic-to@1.6.7/dist/iife/heic-to.js',
     pdf: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
@@ -1572,7 +1653,8 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
 
   var state = {
     rows: [], photos: [], images: {}, filter: 'all', sort: { key: null, dir: 1 }, reviewId: null,
-    settings: { company: 'Ares Security Consulting', client: '', date: todayISO() }
+    lib: [], libOpen: false, libSel: {}, libFilter: 'all', libQuery: '', libDel: null,
+    settings: { company: 'Ares Security Consulting', client: '', date: todayISO(), req: '' }
   };
 
   // ---------- storage (text in localStorage, card pictures in IndexedDB) ----------
@@ -1584,17 +1666,19 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   var idbOpen = function () {
     return new Promise(function (res) {
       try {
-        var rq = indexedDB.open('ares_fg_v3', 1);
-        rq.onupgradeneeded = function () { rq.result.createObjectStore('img'); };
-        rq.onsuccess = function () { idb = rq.result; res(idb); };
+        var rq = indexedDB.open('ares_fg_v3', 2);
+        rq.onupgradeneeded = function () { var db = rq.result; ['img', 'lib'].forEach(function (n) { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n); }); };
+        rq.onsuccess = function () { idb = rq.result; idb.onversionchange = function () { try { idb.close(); } catch (e) {} idb = null; }; res(idb); };
         rq.onerror = function () { res(null); };
+        rq.onblocked = function () { res(null); };
       } catch (e) { res(null); }
     });
   };
-  var idbDo = function (mode, fn) {
+  var idbDo = function (mode, fn, store) {
+    store = store || 'img';
     return new Promise(function (res) {
       if (!idb) return res(null);
-      try { var tx = idb.transaction('img', mode); var out = fn(tx.objectStore('img')); tx.oncomplete = function () { res(out && out.result); }; tx.onerror = function () { res(null); }; }
+      try { var tx = idb.transaction(store, mode); var out = fn(tx.objectStore(store)); tx.oncomplete = function () { res(out && out.result); }; tx.onerror = function () { res(null); }; }
       catch (e) { res(null); }
     });
   };
@@ -1626,17 +1710,37 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     }
     if (state.filter === 'check') rows = rows.filter(needsCheck);
     if (state.filter === 'exp') rows = rows.filter(function (r) { var s = status(r).k; return s === 'r' || s === 'a'; });
+    if (state.filter === 'req') { var miss = reqMissing(); rows = rows.filter(function (r) { return rowMiss(r, miss); }); }
     return rows;
   };
+  // one guard can hold several cards: group them by first and last name
+  var letters = function (s) { return String(s || '').toUpperCase().replace(/[^A-Z]/g, ''); };
+  var gkey = function (name) { var t = String(name || '').toUpperCase().replace(/[^A-Z ]/g, ' ').trim().split(/\s+/).filter(Boolean); return !t.length ? '' : t.length === 1 ? t[0] : t[0] + ' ' + t[t.length - 1]; };
+  // guards on the roster who do not hold the card this event requires
+  var reqMissing = function () {
+    var req = state.settings.req, miss = {}, has = {}; if (!req) return miss;
+    state.rows.forEach(function (r) { var k = gkey(r.name) || r.id; miss[k] = 1; if (r.type === req) has[k] = 1; });
+    Object.keys(has).forEach(function (k) { delete miss[k]; });
+    return miss;
+  };
+  var rowMiss = function (r, miss) { return !!miss[gkey(r.name) || r.id]; };
 
   // ---------- rendering ----------
   var renderSummary = function () {
     var n = state.rows.length, chk = state.rows.filter(needsCheck).length;
     var bad = state.rows.filter(function (r) { var s = status(r).k; return s === 'r' || s === 'a'; }).length;
     var d = dupes(), dup = Object.keys(d).filter(function (k) { return d[k] > 1; }).length;
-    $('#summary').innerHTML = n ? '<b>' + n + '</b> ' + (n === 1 ? 'card' : 'cards') + ' on the roster' + (chk ? ' · <b>' + chk + '</b> to check' : ' · all confirmed') + (bad ? ' · <b>' + bad + '</b> expired or expiring' : '') + (dup ? ' · <b>' + dup + '</b> listed twice' : '') : 'No cards yet.';
-    $('#chips').innerHTML = n ? [['all', 'All', n], ['check', 'To check', chk], ['exp', 'Expired or expiring', bad]].map(function (c) {
-      return '<button type="button" class="chip' + (state.filter === c[0] ? ' on' : '') + '" data-filter="' + c[0] + '">' + c[1] + '<span class="c">' + c[2] + '</span></button>';
+    var req = state.settings.req, miss = reqMissing(), mis = Object.keys(miss).length, misRows = state.rows.filter(function (r) { return rowMiss(r, miss); }).length;
+    if (state.filter === 'req' && !mis) state.filter = 'all';
+    $('#summary').innerHTML = n ? '<b>' + n + '</b> ' + (n === 1 ? 'card' : 'cards') + ' on the roster' + (chk ? ' · <b>' + chk + '</b> to check' : ' · all confirmed') + (bad ? ' · <b>' + bad + '</b> expired or expiring' : '') + (mis ? ' · <b>' + mis + '</b> without ' + esc(req) : '') + (dup ? ' · <b>' + dup + '</b> listed twice' : '') : 'No cards yet.';
+    var rb = $('#reqBanner');
+    if (mis) {
+      var fix = reqFixes(miss).length;
+      rb.className = 'banner err show';
+      rb.innerHTML = mis + (mis === 1 ? ' guard on this roster does' : ' guards on this roster do') + ' not have ' + (/^[AEF]/.test(req) ? 'an ' : 'a ') + esc(req) + ' card listed.' + (fix ? ' <button type="button" class="btn small" id="reqFix" style="margin-left:8px">Add ' + fix + ' from saved guards</button>' : '');
+    } else { rb.className = 'banner err'; rb.innerHTML = ''; }
+    $('#chips').innerHTML = n ? [['all', 'All', n], ['check', 'To check', chk], ['exp', 'Expired or expiring', bad]].concat(mis ? [['req', 'No ' + req, misRows]] : []).map(function (c) {
+      return '<button type="button" class="chip' + (state.filter === c[0] ? ' on' : '') + '" data-filter="' + c[0] + '">' + esc(c[1]) + '<span class="c">' + c[2] + '</span></button>';
     }).join('') : '';
     var cb = $('#checkBanner');
     if (chk) { cb.className = 'banner warn show'; cb.innerHTML = chk + (chk === 1 ? ' card needs' : ' cards need') + ' a quick look before you send this. <button type="button" class="btn small" id="reviewAll" style="margin-left:8px">Review now</button>'; }
@@ -1645,22 +1749,24 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     $('#pdf').disabled = !n; $('#csv').disabled = !n;
   };
   var renderRoster = function () {
+    var req = state.settings.req, miss = reqMissing();
+    if (state.filter === 'req' && !Object.keys(miss).length) state.filter = 'all';
     var rows = visibleRows(), d = dupes();
     if (!state.rows.length) { $('#roster').innerHTML = '<div class="empty-roster">Guards will appear here as their cards are read.</div>'; renderSummary(); return; }
     if (!rows.length) { $('#roster').innerHTML = '<div class="empty-roster">Nothing in this view.</div>'; renderSummary(); return; }
     var arrow = function (k) { return state.sort.key === k ? (state.sort.dir > 0 ? ' ▲' : ' ▼') : ''; };
     var h = '<table><thead><tr><th></th><th>Card</th><th class="sortable" data-sort="name">Full name' + arrow('name') + '</th><th class="sortable" data-sort="type">Type' + arrow('type') + '</th><th class="sortable" data-sort="cert">Certificate #' + arrow('cert') + '</th><th class="sortable" data-sort="exp">Expires' + arrow('exp') + '</th><th>Status</th><th></th></tr></thead><tbody>';
     rows.forEach(function (r, i) {
-      var st = status(r), chk = needsCheck(r), fl = r.flags || {};
+      var st = status(r), chk = needsCheck(r), fl = r.flags || {}, noReq = rowMiss(r, miss);
       var img = state.images[r.id];
-      h += '<tr data-id="' + r.id + '" class="' + (chk ? 'flag' : 'ok') + '" draggable="' + (state.sort.key || state.filter !== 'all' ? 'false' : 'true') + '">' +
+      h += '<tr data-id="' + r.id + '" class="' + (chk ? 'flag' : noReq ? 'miss' : 'ok') + '" draggable="' + (state.sort.key || state.filter !== 'all' ? 'false' : 'true') + '">' +
         '<td class="num" title="Drag to reorder">' + String(i + 1).padStart(2, '0') + '</td>' +
         '<td>' + (img ? '<a class="thumb" data-act="review" style="background-image:url(' + img + ')" title="Compare with the card"></a>' : '<span class="thumb empty">By hand</span>') + '</td>' +
         '<td class="name' + (fl.name ? ' check' : '') + '" data-l="Full name"><input data-f="name" value="' + esc(r.name) + '" placeholder="Full name" autocomplete="off"></td>' +
         '<td class="type' + (fl.type ? ' check' : '') + '" data-l="Type"><select data-f="type">' + ['', 'F-01', 'F-02', 'F-03', 'F-04'].map(function (t) { return '<option value="' + t + '"' + (r.type === t ? ' selected' : '') + '>' + (t || 'Choose') + '</option>'; }).join('') + '</select></td>' +
         '<td class="cert' + (fl.cert ? ' check' : '') + '" data-l="Certificate #"><input data-f="cert" value="' + esc(r.cert) + '" placeholder="Number" inputmode="numeric" autocomplete="off"></td>' +
         '<td class="exp' + (fl.exp ? ' check' : '') + '" data-l="Expires"><input data-f="exp" type="date" value="' + esc(r.exp) + '"></td>' +
-        '<td><span class="pill ' + st.k + '">' + st.label + '</span>' + (r.cert && d[r.cert] > 1 ? ' <span class="pill a">Listed twice</span>' : '') + (r.lowRes && chk ? ' <span class="pill n" title="The card is small or blurry in this photo. A closer, sharper photo reads better.">Blurry photo</span>' : '') + '</td>' +
+        '<td><span class="pill ' + st.k + '">' + st.label + '</span>' + (noReq ? ' <span class="pill r">No ' + esc(req) + '</span>' : '') + (r.cert && d[r.cert] > 1 ? ' <span class="pill a">Listed twice</span>' : '') + (r.lowRes && chk ? ' <span class="pill n" title="The card is small or blurry in this photo. A closer, sharper photo reads better.">Blurry photo</span>' : '') + '</td>' +
         '<td style="white-space:nowrap;text-align:right">' + (chk ? '<button type="button" class="rowbtn review" data-act="review">Check</button>' : '') + '<button type="button" class="rowbtn" data-act="remove" title="Remove this guard">Remove</button></td></tr>';
     });
     $('#roster').innerHTML = h + '</tbody></table>';
@@ -1668,7 +1774,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
   };
   var renderProgress = function () {
     var ph = state.photos, total = ph.length;
-    if (!total) { $('#progress').innerHTML = ''; return; }
+    if (!total) { $('#progress').innerHTML = ''; camStatus(); return; }
     var done = ph.filter(function (p) { return p.status !== 'waiting' && p.status !== 'reading'; }).length;
     var busy = done < total;
     var h = '';
@@ -1680,6 +1786,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
         (p.status !== 'reading' && p.status !== 'waiting' ? '<button type="button" class="x" data-pact="dismiss" title="Hide">×</button>' : '') + '</div>';
     }).join('') + '</div>';
     $('#progress').innerHTML = h;
+    camStatus();
   };
   var showErr = function (msg) { var b = $('#errBanner'); b.textContent = msg || ''; b.className = 'banner err' + (msg ? ' show' : ''); };
 
@@ -1771,7 +1878,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
             if (/\.pdf$/i.test(p.name) || (p.file && p.file.type === 'application/pdf')) await ensurePdf();
             var res = await FireGuardScanner.scanFile(worker, p.file, { heicDecode: heicDecode, onStep: (function (ph) { return function (s) { ph.note = s; renderProgress(); }; })(p) });
             p.thumb = res.preview; p.count = res.cards.length;
-            res.cards.forEach(function (c) { var r = rowFromCard(c, p.name); state.rows.push(r); if (c.cardImage) imgPut(r.id, c.cardImage); });
+            res.cards.forEach(function (c) { var r = rowFromCard(c, p.name); state.rows.push(r); if (c.cardImage) imgPut(r.id, c.cardImage); libSync(r); });
             p.status = res.cards.length ? 'done' : 'none';
             if (res.cards.length) p.file = null;
           } catch (e) {
@@ -1818,14 +1925,14 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     $('#mPrev').disabled = idx <= 0; $('#mNext').disabled = idx < 0 || idx >= list.length - 1;
     $('#modal').className = 'modal show'; $('#modal').setAttribute('aria-hidden', 'false');
   };
-  var closeReview = function () { state.reviewId = null; $('#modal').className = 'modal'; $('#modal').setAttribute('aria-hidden', 'true'); renderRoster(); };
+  var closeReview = function () { libSync(rowById(state.reviewId)); state.reviewId = null; $('#modal').className = 'modal'; $('#modal').setAttribute('aria-hidden', 'true'); renderRoster(); };
   var pullReview = function () {
     var r = rowById(state.reviewId); if (!r) return null;
     r.name = $('#mName').value.trim().toUpperCase(); r.type = $('#mType').value; r.cert = $('#mCert').value.trim(); r.exp = $('#mExp').value;
     return r;
   };
   var stepReview = function (dir) {
-    var r = pullReview(); save();
+    var r = pullReview(); libSync(r); save();
     var list = reviewList(), idx = list.indexOf(r), nx = list[idx + dir];
     if (nx) openReview(nx.id); else closeReview();
   };
@@ -1844,7 +1951,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   };
-  var csvCell = function (v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var csvCell = function (v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   var exportCSV = function () {
     var rows = visibleRowsForExport();
     var out = [['#', 'Full Name', 'Type', 'Certificate #', 'Expiration Date', 'Status'].join(',')];
@@ -1926,11 +2033,276 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     download(doc.output('blob'), safeName() + '.pdf');
   };
 
+  // ---------- saved guards (kept on this device, one entry per card) ----------
+  var daysLeft = function (exp) { var d = parseISO(exp), t = parseISO(todayISO()); return d ? Math.round((d - t) / 86400000) : null; };
+  var libSave = function () { try { localStorage.setItem(LS_LIB, JSON.stringify(state.lib)); } catch (e) {} };
+  var libReady = function (r) { return !!(r && r.name && r.type && r.exp && /^\d{5,}$/.test(r.cert || '') && !needsCheck(r)); };
+  // a confirmed roster row is copied into the saved list; the certificate number identifies the card
+  var libSync = function (r) {
+    if (!libReady(r)) return;
+    var e = state.lib.find(function (x) { return x.cert === r.cert; });
+    if (e && e.id !== r.libId && e.exp > r.exp) { r.libId = e.id; return; }      // the saved copy of this card is newer than this photo
+    if (!e && r.libId) e = state.lib.find(function (x) { return x.id === r.libId; });
+    if (!e) {
+      e = { id: uid(), savedAt: todayISO() }; state.lib.push(e);
+      if (state.lib.length === 1 && navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (x) {} }
+    }
+    e.name = r.name; e.type = r.type; e.cert = r.cert; e.exp = r.exp; e.issued = r.issued || e.issued || ''; e.updatedAt = todayISO();
+    r.libId = e.id;
+    var img = state.images[r.id];
+    if (img && (r.src === 'scan' || !e.img)) { e.img = true; idbDo('readwrite', function (s) { s.put(img, e.id); }, 'lib'); }
+    libSave(); renderSaved();
+  };
+  // every saved card with how it stands today
+  var libView = function () {
+    var cards = state.lib.map(function (c) { return { c: c, days: daysLeft(c.exp) }; });
+    cards.forEach(function (x) {
+      // an expired card is treated as replaced once the same guard has a current card of the same type
+      x.replaced = x.days != null && x.days < 0 && cards.some(function (y) { return y !== x && y.c.type === x.c.type && y.days != null && y.days >= 0 && letters(y.c.name) === letters(x.c.name); });
+    });
+    return cards;
+  };
+  var libCounts = function (cards) {
+    var live = cards.filter(function (x) { return !x.replaced && x.days != null; });
+    var within = function (n) { return live.filter(function (x) { return x.days >= 0 && x.days <= n; }).length; };
+    return { expired: live.filter(function (x) { return x.days < 0; }).length, d30: within(30), d60: within(60), d90: within(90) };
+  };
+  var libHit = function (x, f) { return f === 'all' || f === 'noreq' ? true : x.replaced || x.days == null ? false : f === 'expired' ? x.days < 0 : x.days >= 0 && x.days <= +f.slice(1); };
+  var libGroupsAll = function () {
+    var cards = libView(), on = {}, req = state.settings.req, ev = parseISO(state.settings.date), map = {}, list = [];
+    state.rows.forEach(function (r) { if (r.cert) on[r.cert] = 1; });
+    cards.forEach(function (x) {
+      x.on = !!on[x.c.cert];
+      x.late = !!ev && x.days != null && x.days >= 0 && parseISO(x.c.exp) < ev;
+      var k = gkey(x.c.name) || x.c.id;
+      if (!map[k]) { map[k] = { key: k, name: x.c.name, cards: [] }; list.push(map[k]); }
+      if (x.c.name.length > map[k].name.length) map[k].name = x.c.name;
+      map[k].cards.push(x);
+    });
+    list.forEach(function (g) {
+      g.cards.sort(function (a, b) { return a.c.type < b.c.type ? -1 : a.c.type > b.c.type ? 1 : a.c.exp < b.c.exp ? 1 : -1; });
+      g.noReq = !!req && !g.cards.some(function (x) { return x.c.type === req; });
+    });
+    return list;
+  };
+  var libGroups = function () {
+    var q = state.libQuery.trim().toUpperCase(), f = state.libFilter;
+    var out = libGroupsAll().filter(function (g) {
+      if (q && g.name.indexOf(q) < 0 && !g.cards.some(function (x) { return x.c.cert.indexOf(q) >= 0 || x.c.name.indexOf(q) >= 0; })) return false;
+      return f === 'noreq' ? g.noReq : g.cards.some(function (x) { return libHit(x, f); });
+    });
+    var soon = function (g) { return Math.min.apply(null, g.cards.filter(function (x) { return libHit(x, f); }).map(function (x) { return x.days; })); };
+    if (f === 'all' || f === 'noreq') out.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
+    else out.sort(function (a, b) { return soon(a) - soon(b); });
+    return out;
+  };
+  // the cards a tap on a guard's name selects: the required card if there is one, otherwise the newest of each type
+  var libDefault = function (g) {
+    var req = state.settings.req, seen = {}, avail = g.cards.filter(function (x) { return !x.on && !x.replaced; });
+    var newest = avail.filter(function (x) { if (seen[x.c.type]) return false; seen[x.c.type] = 1; return true; });
+    var want = req ? newest.filter(function (x) { return x.c.type === req; }) : [];
+    return (want.length ? want : newest).map(function (x) { return x.c.id; });
+  };
+  var cardNote = function (x) {
+    return x.replaced ? ['n', 'Replaced'] : x.days == null ? ['n', 'No date'] : x.days < 0 ? ['r', 'Expired'] : x.late ? ['r', 'Expires before the event'] :
+      x.days <= 90 ? ['a', x.days === 0 ? 'Expires today' : x.days + (x.days === 1 ? ' day left' : ' days left')] : ['g', ''];
+  };
+  // guards flagged as missing the required card who do have one in the saved list
+  var reqFixes = function (miss) {
+    var req = state.settings.req, ids = []; if (!req) return ids;
+    libGroupsAll().forEach(function (g) {
+      if (!miss[g.key]) return;
+      var x = g.cards.find(function (c) { return c.c.type === req && !c.on && !c.replaced; });
+      if (x) ids.push(x.c.id);
+    });
+    return ids;
+  };
+  var addFromLib = function (ids) {
+    ids.forEach(function (id) {
+      var e = state.lib.find(function (x) { return x.id === id; }); if (!e) return;
+      var r = { id: uid(), name: e.name, type: e.type, cert: e.cert, exp: e.exp, issued: e.issued || '', flags: { name: false, type: false, cert: false, exp: false }, src: 'saved', libId: e.id };
+      state.rows.push(r);
+      if (e.img) idbDo('readonly', function (s) { return s.get(e.id); }, 'lib').then(function (d) { if (d) { imgPut(r.id, d); renderRoster(); } });
+    });
+    save(); state.filter = 'all'; renderRoster(); renderSaved();
+  };
+  var renderSaved = function () {
+    var cards = libView(), n = cards.length, k = libCounts(cards), gs = {};
+    cards.forEach(function (x) { gs[gkey(x.c.name) || x.c.id] = 1; });
+    var g = Object.keys(gs).length;
+    $('#savedSub').textContent = n ? g + (g === 1 ? ' guard, ' : ' guards, ') + n + (n === 1 ? ' card' : ' cards') + ' kept on this device' : 'Cards you confirm are kept on this device, so each one only has to be scanned once.';
+    var pill = function (k2, f, t) { return '<button type="button" class="pill ' + k2 + '" data-lf="' + f + '">' + t + '</button>'; };
+    var p = '';
+    if (n) {
+      if (k.expired) p += pill('r', 'expired', k.expired + ' expired');
+      if (k.d30) p += pill('a', 'd30', k.d30 + (k.d30 === 1 ? ' expires' : ' expire') + ' in 30 days');
+      if (k.d60 > k.d30) p += pill('n', 'd60', k.d60 + ' in 60 days');
+      if (k.d90 > k.d60) p += pill('n', 'd90', k.d90 + ' in 90 days');
+      if (!k.expired && !k.d90) p += '<span class="pill g">Nothing expires in the next 90 days</span>';
+    }
+    $('#savedPills').innerHTML = p;
+    $('#pickSaved').hidden = !n;
+    if (state.libOpen) renderLib();
+  };
+  var libMsg = function (t) { $('#lHint').textContent = t || 'Tap a guard to select them, then add them to the roster. Every card you confirm is saved here automatically.'; };
+  var renderLib = function () {
+    var all = libGroupsAll(), groups = libGroups(), cards = libView(), k = libCounts(cards), req = state.settings.req;
+    var chips = [['all', 'All', cards.length], ['expired', 'Expired', k.expired], ['d30', 'In 30 days', k.d30], ['d60', 'In 60 days', k.d60], ['d90', 'In 90 days', k.d90]];
+    if (req) chips.push(['noreq', 'No ' + req, all.filter(function (g) { return g.noReq; }).length]);
+    $('#lChips').innerHTML = chips.map(function (c) { return '<button type="button" class="chip' + (state.libFilter === c[0] ? ' on' : '') + '" data-lf="' + c[0] + '">' + esc(c[1]) + '<span class="c">' + c[2] + '</span></button>'; }).join('');
+    var h = groups.map(function (g) {
+      return '<div class="g" data-g="' + esc(g.key) + '"><button type="button" class="gname" data-gact="pick" title="Select this guard">' + esc(g.name) + '</button><div class="gcards">' +
+        g.cards.map(function (x) {
+          var nt = cardNote(x), sel = state.libSel[x.c.id] && !x.on;
+          return '<span class="gc' + (sel ? ' on' : '') + (x.on ? ' dis' : '') + '"><button type="button" data-cid="' + esc(x.c.id) + '"' + (x.on ? ' disabled' : '') + '><b>' + esc(x.c.type) + '</b> ' + esc(x.c.cert) + ' · exp ' + esc(fmtDate(x.c.exp)) +
+            (x.on ? ' <span class="pill n">On roster</span>' : nt[1] ? ' <span class="pill ' + nt[0] + '">' + nt[1] + '</span>' : '') + '</button>' +
+            '<button type="button" class="gx" data-cdel="' + esc(x.c.id) + '" title="Remove this card from the saved list">' + (state.libDel === x.c.id ? 'Remove?' : '×') + '</button></span>';
+        }).join('') + (g.noReq ? '<span class="pill r">No ' + esc(req) + ' on file</span>' : '') + '</div></div>';
+    }).join('');
+    $('#lList').innerHTML = h || '<div class="empty-roster">' + (state.lib.length ? 'No saved guards match.' : 'No saved guards yet. Scan a card, confirm it, and it shows up here.') + '</div>';
+    var ids = Object.keys(state.libSel), nSel = ids.length;
+    $('#lAdd').disabled = !nSel; $('#lAdd').textContent = nSel ? 'Add ' + nSel + (nSel === 1 ? ' card' : ' cards') + ' to the roster' : 'Add to roster';
+    $('#lAll').hidden = !groups.length; $('#lCsv').hidden = !groups.length; $('#lBackup').hidden = !state.lib.length;
+  };
+  var openLib = function (filter) {
+    state.libOpen = true; state.libSel = {}; state.libDel = null; state.libFilter = filter || 'all'; state.libQuery = ''; $('#lSearch').value = '';
+    libMsg(''); renderLib(); $('#lib').className = 'modal show'; $('#lib').setAttribute('aria-hidden', 'false');
+  };
+  var closeLib = function () { state.libOpen = false; $('#lib').className = 'modal'; $('#lib').setAttribute('aria-hidden', 'true'); };
+  var libRemove = function (id) {
+    state.lib = state.lib.filter(function (x) { return x.id !== id; }); delete state.libSel[id];
+    state.rows.forEach(function (r) { if (r.libId === id) delete r.libId; });
+    idbDo('readwrite', function (s) { s.delete(id); }, 'lib'); libSave(); save(); renderSaved();
+  };
+  var libCsv = function () {
+    var f = state.libFilter, out = [['Full Name', 'Type', 'Certificate #', 'Expiration Date', 'Days Left', 'Status'].join(',')];
+    libGroups().forEach(function (g) {
+      g.cards.forEach(function (x) {
+        if (!libHit(x, f)) return;
+        out.push([csvCell(x.c.name), csvCell(x.c.type), csvCell(x.c.cert), csvCell(fmtDate(x.c.exp)), x.days == null ? '' : x.days, csvCell(x.replaced ? 'Replaced by a newer card' : x.days == null ? 'No date' : x.days < 0 ? 'Expired' : 'Valid')].join(','));
+      });
+    });
+    var tag = { all: 'All', expired: 'Expired', d30: 'Expiring_30_Days', d60: 'Expiring_60_Days', d90: 'Expiring_90_Days', noreq: 'Missing_' + state.settings.req }[f] || 'All';
+    download(new Blob([out.join('\n')], { type: 'text/csv' }), 'Ares_Saved_Guards_' + tag + '_' + todayISO() + '.csv');
+  };
+  var libBackup = async function () {
+    var images = {};
+    if (idb) await Promise.all(state.lib.filter(function (e) { return e.img; }).map(function (e) { return idbDo('readonly', function (s) { return s.get(e.id); }, 'lib').then(function (d) { if (d) images[e.id] = d; }); }));
+    download(new Blob([JSON.stringify({ app: 'ares-fire-guard-roster', kind: 'saved-guards', v: 1, made: todayISO(), cards: state.lib, images: images })], { type: 'application/json' }), 'Ares_Saved_Guards_Backup_' + todayISO() + '.json');
+  };
+  var libRestore = async function (file) {
+    var data = null; try { data = JSON.parse(await file.text()); } catch (e) {}
+    if (!data || data.kind !== 'saved-guards' || !Array.isArray(data.cards)) { libMsg('That file is not a saved guards backup.'); return; }
+    var added = 0, updated = 0;
+    data.cards.forEach(function (c) {
+      if (!c || typeof c.name !== 'string' || !/^\d{5,}$/.test(String(c.cert || ''))) return;
+      var exp = /^\d{4}-\d{2}-\d{2}$/.test(c.exp || '') ? c.exp : '', cert = String(c.cert);
+      var e = state.lib.find(function (x) { return x.cert === cert; });
+      if (e && e.exp >= exp) return;                       // this device already has the same card, as new or newer
+      if (e) updated++; else { e = { id: uid(), savedAt: todayISO() }; state.lib.push(e); added++; }
+      e.name = c.name.toUpperCase().slice(0, 80); e.type = /^F-0[1-4]$/.test(c.type || '') ? c.type : ''; e.cert = cert; e.exp = exp;
+      e.issued = /^\d{4}-\d{2}-\d{2}$/.test(c.issued || '') ? c.issued : ''; e.updatedAt = todayISO();
+      var img = data.images && data.images[c.id];
+      if (typeof img === 'string' && /^data:image\/(jpeg|png);base64,[A-Za-z0-9+\/=]+$/.test(img)) { e.img = true; (function (id, d) { idbDo('readwrite', function (s) { s.put(d, id); }, 'lib'); })(e.id, img); }
+    });
+    libSave(); renderSaved();
+    libMsg(added || updated ? 'Backup loaded: ' + added + ' added' + (updated ? ', ' + updated + ' updated' : '') + '.' : 'Everything in that backup is already saved here.');
+  };
+  var bindSaved = function () {
+    $('#openLib').addEventListener('click', function () { openLib('all'); });
+    $('#pickSaved').addEventListener('click', function (e) { e.stopPropagation(); openLib('all'); });
+    $('#savedPills').addEventListener('click', function (e) { var b = e.target.closest('[data-lf]'); if (b) openLib(b.getAttribute('data-lf')); });
+    $('#lClose').addEventListener('click', closeLib);
+    $('#lib').addEventListener('click', function (e) { if (e.target.id === 'lib') closeLib(); });
+    $('#lSearch').addEventListener('input', function () { state.libQuery = $('#lSearch').value; renderLib(); });
+    $('#lChips').addEventListener('click', function (e) { var b = e.target.closest('[data-lf]'); if (!b) return; state.libFilter = b.getAttribute('data-lf'); renderLib(); });
+    $('#lList').addEventListener('click', function (e) {
+      var del = e.target.closest('[data-cdel]'), card = e.target.closest('[data-cid]'), pick = e.target.closest('[data-gact]');
+      if (del) { var id = del.getAttribute('data-cdel'); if (state.libDel === id) { state.libDel = null; libRemove(id); } else { state.libDel = id; renderLib(); } return; }
+      state.libDel = null;
+      if (card) { var cid = card.getAttribute('data-cid'); if (state.libSel[cid]) delete state.libSel[cid]; else state.libSel[cid] = 1; renderLib(); return; }
+      if (pick) {
+        var key = pick.closest('[data-g]').getAttribute('data-g'), g = libGroupsAll().find(function (x) { return x.key === key; }); if (!g) return;
+        var ids = libDefault(g), allOn = ids.length && ids.every(function (i) { return state.libSel[i]; });
+        ids.forEach(function (i) { if (allOn) delete state.libSel[i]; else state.libSel[i] = 1; });
+        renderLib();
+      }
+    });
+    $('#lAll').addEventListener('click', function () { libGroups().forEach(function (g) { libDefault(g).forEach(function (i) { state.libSel[i] = 1; }); }); renderLib(); });
+    $('#lAdd').addEventListener('click', function () { var ids = Object.keys(state.libSel); state.libSel = {}; closeLib(); addFromLib(ids); });
+    $('#lCsv').addEventListener('click', libCsv);
+    $('#lBackup').addEventListener('click', libBackup);
+    $('#lRestore').addEventListener('click', function () { $('#lFile').click(); });
+    $('#lFile').addEventListener('change', function () { var f = $('#lFile').files[0]; $('#lFile').value = ''; if (f) libRestore(f); });
+    $('#camDone').addEventListener('click', camClose);
+    $('#camShot').addEventListener('click', camShoot);
+    document.addEventListener('visibilitychange', function () { if (document.hidden && camera.stream) camClose(); });
+  };
+
+  // ---------- camera with a card outline (phones) ----------
+  var camera = { stream: null, n: 0, ids: [], native: false };
+  var CAM_TIP = 'Fit the card inside the frame. Hold steady and tilt away from glare.';
+  var camOpen = async function () {
+    try {
+      camera.stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } } });
+    } catch (e) { camera.stream = null; return false; }
+    var v = $('#camV'); v.srcObject = camera.stream;
+    try { await v.play(); } catch (e) {}
+    try {
+      var tr = camera.stream.getVideoTracks()[0], caps = tr.getCapabilities ? tr.getCapabilities() : {};
+      if (caps.focusMode && caps.focusMode.indexOf('continuous') >= 0) tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+    } catch (e) {}
+    camera.n = 0; camera.ids = [];
+    $('#camUI').className = 'camwrap show'; $('#camUI').setAttribute('aria-hidden', 'false');
+    camStatus(); return true;
+  };
+  var camClose = function () {
+    if (camera.stream) { try { camera.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} }
+    camera.stream = null; $('#camV').srcObject = null;
+    $('#camUI').className = 'camwrap'; $('#camUI').setAttribute('aria-hidden', 'true');
+  };
+  var camShoot = function () {
+    var v = $('#camV'), vw = v.videoWidth, vh = v.videoHeight; if (!vw || !vh) return;
+    // the video fills the screen and is cropped to fit; map the outline back onto the camera frame, with room to spare around it
+    var box = v.getBoundingClientRect(), g = $('#camG').getBoundingClientRect();
+    var sc = Math.max(box.width / vw, box.height / vh), ox = (box.width - vw * sc) / 2, oy = (box.height - vh * sc) / 2, m = g.width * 0.22;
+    var x0 = Math.max(0, Math.floor((g.left - box.left - m - ox) / sc)), y0 = Math.max(0, Math.floor((g.top - box.top - m - oy) / sc));
+    var x1 = Math.min(vw, Math.ceil((g.right - box.left + m - ox) / sc)), y1 = Math.min(vh, Math.ceil((g.bottom - box.top + m - oy) / sc));
+    if (x1 - x0 < 50 || y1 - y0 < 50) { x0 = 0; y0 = 0; x1 = vw; y1 = vh; }
+    var c = document.createElement('canvas'); c.width = x1 - x0; c.height = y1 - y0;
+    c.getContext('2d').drawImage(v, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+    var n = ++camera.n;
+    $('#camG').classList.add('flash'); setTimeout(function () { $('#camG').classList.remove('flash'); }, 260);
+    c.toBlob(function (b) {
+      if (!b) return;
+      var at = state.photos.length;
+      addFiles([new File([b], 'Camera photo ' + n + '.jpg', { type: 'image/jpeg' })]);
+      if (state.photos[at]) camera.ids.push(state.photos[at].id);
+      camStatus();
+    }, 'image/jpeg', 0.95);
+  };
+  var camStatus = function () {
+    if (!camera.stream) return;
+    var mine = state.photos.filter(function (p) { return camera.ids.indexOf(p.id) >= 0; }), last = mine[mine.length - 1], msg = CAM_TIP;
+    if (last) {
+      msg = last.status === 'waiting' || last.status === 'reading' ? 'Reading that card. You can take the next one.' :
+        last.status === 'done' ? 'Got it. Take the next card, or press Done.' : 'No card found in that photo. Move a little closer and try again.';
+    }
+    $('#camMsg').textContent = msg;
+    var ok = mine.reduce(function (a, p) { return a + (p.status === 'done' ? p.count : 0); }, 0);
+    $('#camCount').textContent = ok ? ok + (ok === 1 ? ' card read' : ' cards read') : '';
+  };
+
   // ---------- events ----------
   var bind = function () {
     var drop = $('#drop'), file = $('#file'), cam = $('#cam');
     $('#pick').addEventListener('click', function (e) { e.stopPropagation(); file.click(); });
-    $('#snap').addEventListener('click', function (e) { e.stopPropagation(); cam.click(); });
+    $('#snap').addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (camera.native || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { cam.click(); return; }
+      camOpen().then(function (ok) { if (!ok) { camera.native = true; showErr('The camera view could not open here. Tap Take a photo again to use the phone camera instead.'); } else showErr(''); });
+    });
+    bindSaved();
     $('#manual').addEventListener('click', function (e) { e.stopPropagation(); addManual(); });
     drop.addEventListener('click', function () { file.click(); });
     drop.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); file.click(); } });
@@ -1948,6 +2320,9 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
       el.addEventListener('input', function () { state.settings[k] = el.value; save(); if (k === 'company') $('#brandLine').textContent = el.value || 'Ares Security'; if (k !== 'company') renderRoster(); });
     });
     $('#brandLine').textContent = state.settings.company || 'Ares Security';
+    var rq = $('#req'); rq.value = state.settings.req || '';
+    rq.addEventListener('change', function () { state.settings.req = rq.value; save(); renderRoster(); if (state.libOpen) renderLib(); });
+    $('#reqBanner').addEventListener('click', function (e) { if (e.target.id !== 'reqFix') return; addFromLib(reqFixes(reqMissing())); });
 
     $('#progress').addEventListener('click', function (e) {
       var b = e.target.closest('[data-pact]'); if (!b) return;
@@ -1974,6 +2349,7 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
       r[f] = f === 'name' ? e.target.value.toUpperCase() : e.target.value.trim();
       if (r.flags) r.flags[f] = false;                    // a person typed it: settled
       e.target.closest('td').classList.remove('check');
+      if (e.type === 'change') libSync(r);
       save();
       if (e.type === 'change') renderRoster(); else renderSummary();
     };
@@ -2001,19 +2377,23 @@ td.name{min-width:290px} td.type{width:88px} td.cert{width:124px} td.exp{width:1
     $('#mNext').addEventListener('click', function () { stepReview(1); });
     $('#mRemove').addEventListener('click', function () { var id = state.reviewId; state.rows = state.rows.filter(function (r) { return r.id !== id; }); imgDel(id); save(); closeReview(); });
     $('#modal').addEventListener('click', function (e) { if (e.target.id === 'modal') { pullReview(); save(); closeReview(); } });
-    window.addEventListener('keydown', function (e) { if (!state.reviewId) return; if (e.key === 'Escape') { pullReview(); save(); closeReview(); } });
+    window.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (camera.stream) camClose(); else if (state.libOpen) closeLib(); else if (state.reviewId) { pullReview(); save(); closeReview(); }
+    });
   };
   var stepReviewAfterOk = function (r) {
-    save();
+    libSync(r); save();
     var nx = state.rows.find(function (x) { return x !== r && needsCheck(x); });
     if (nx) openReview(nx.id); else closeReview();
   };
 
   // ---------- start ----------
   var start = async function () {
-    try { var s = JSON.parse(localStorage.getItem(LS_SET) || 'null'); if (s) { state.settings.company = s.company || state.settings.company; state.settings.client = s.client || ''; if (s.date) state.settings.date = s.date; } } catch (e) {}
+    try { var s = JSON.parse(localStorage.getItem(LS_SET) || 'null'); if (s) { state.settings.company = s.company || state.settings.company; state.settings.client = s.client || ''; if (s.date) state.settings.date = s.date; state.settings.req = /^F-0[1-4]$/.test(s.req || '') ? s.req : ''; } } catch (e) {}
+    try { var lb = JSON.parse(localStorage.getItem(LS_LIB) || '[]'); if (Array.isArray(lb)) state.lib = lb.filter(function (x) { return x && x.id && x.cert; }); } catch (e) {}
     try { var r = JSON.parse(localStorage.getItem(LS_ROWS) || '[]'); if (Array.isArray(r)) state.rows = r.filter(function (x) { return x && x.id; }); } catch (e) {}
-    bind(); renderRoster(); renderProgress();
+    bind(); renderRoster(); renderProgress(); renderSaved();
     await idbOpen();
     if (idb && state.rows.length) {
       await Promise.all(state.rows.map(function (row) { return idbDo('readonly', function (st) { return st.get(row.id); }).then(function (d) { if (d) state.images[row.id] = d; }); }));
